@@ -1,8 +1,4 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// prisma/schema.prisma
 
 generator client {
   provider = "prisma-client-js"
@@ -15,26 +11,27 @@ datasource db {
 }
 
 model User {
-  id              String            @id @default(uuid())
-  slug            String            @unique
-  email           String            @unique
-  phone           String            @unique
+  id              String    @id @default(uuid())
+  slug            String    @unique
+  email           String    @unique
+  phone           String    @unique
   role            UserRole
   name            String
-  avatar          String            @db.Text
+  avatar          String    @db.Text
   locale          Locale
-  created_at      DateTime          @default(now())
-  updated_at      DateTime          @updatedAt
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
   last_login      DateTime?
   email_validated DateTime?
   phone_validated DateTime?
   bio             String?
   company         String?
-  carts           carts[]
-  orders          orders[]
-  social_profiles social_profiles[]
-  credentials     credentials[]
-  cart_items      cart_items[]
+
+  carts          Cart[]
+  orders         Order[]
+  socialProfiles SocialProfile[]
+  credentials    Credential[]
+  reviews        Review[]
 }
 
 enum UserRole {
@@ -49,14 +46,15 @@ enum Locale {
   FR
 }
 
-model carts {
-  id         String       @id @default(uuid()) @db.Uuid
+model Cart {
+  id         String   @id @default(uuid()) @db.Uuid
   created_by String
-  created    User         @relation(fields: [created_by], references: [id])
+  created    User     @relation(fields: [created_by], references: [id])
   status     Status
-  created_at DateTime
-  updated_at DateTime
-  cart_items cart_items[]
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  items CartItem[]
 }
 
 enum Status {
@@ -65,81 +63,137 @@ enum Status {
   ABANDONNED
 }
 
-model orders {
-  id          String        @id @default(uuid())
-  user_id     String
-  user        User          @relation(fields: [user_id], references: [id])
-  created_at  DateTime
-  order_lines order_lines[]
+model Order {
+  id         String   @id @default(uuid()) @db.Uuid
+  user_id    String
+  user       User     @relation(fields: [user_id], references: [id])
+  created_at DateTime @default(now())
+
+  lines OrderLine[]
 }
 
-model social_profiles {
+model SocialProfile {
   user_id       String
-  user          User            @relation(fields: [user_id], references: [id])
-  platform      social_platform
+  user          User           @relation(fields: [user_id], references: [id])
+  platform      SocialPlatform
   platform_user String
-  created_at    DateTime
+  created_at    DateTime       @default(now())
 
   @@id([user_id, platform])
 }
 
-enum social_platform {
+enum SocialPlatform {
   FACEBOOK
-  GITHUP
-  INSTGRAM
+  GITHUB
+  INSTAGRAM
   TWITTER
 }
 
-model credentials {
-  provider_id   provider
+model Credential {
+  provider_id   Provider
   provider_key  String
-  user_id       String      @id
-  user          User        @relation(fields: [user_id], references: [id])
-  hasher        hash_method
+  user_id       String
+  user          User       @relation(fields: [user_id], references: [id])
+  hasher        HashMethod
   password_hash String
   password_salt String
+
+  @@id([provider_id, provider_key])
 }
 
-enum provider {
+enum Provider {
   GOOGLE
   FACEBOOK
   TWITTER
   EMAIL
 }
 
-enum hash_method {
+enum HashMethod {
   md5
   sha1
-  sha265
+  sha256
 }
 
-model cart_items {
-  cart_id    String   @db.Uuid
+model CartItem {
+  id         String   @id @default(uuid()) @db.Uuid
+  created_at DateTime @default(now())
+
+  cart_id String @db.Uuid
+  cart    Cart   @relation(fields: [cart_id], references: [id])
+
+  product_id String  @db.Uuid
+  product    Product @relation(fields: [product_id], references: [id])
+
+  price    Float
+  quantity Int
+}
+
+model Product {
+  id             String       @id @default(uuid()) @db.Uuid
+  category_id    String       @db.Uuid
+  category       Category     @relation(fields: [category_id], references: [id])
+  title          String
+  picture        String
+  summary        String
+  description    String
+  price          Float
+  discount_type  DiscountType @default(none)
+  discount_value Float
+  tags           String[]
+  created_at     DateTime     @default(now())
+  updated_at     DateTime     @updatedAt
+
+  cart_items  CartItem[]
+  order_lines OrderLine[]
+  reviews     Review[]
+}
+
+enum DiscountType {
+  none
+  percent
+  amount
+}
+
+model OrderLine {
+  id       String @id @default(uuid()) @db.Uuid
+  order_id String @db.Uuid
+  order    Order  @relation(fields: [order_id], references: [id])
+
+  product_id String  @db.Uuid
+  product    Product @relation(fields: [product_id], references: [id])
+
+  price    Float
+  quantity Int
+}
+
+model Review {
+  id         String   @id @default(uuid())
+  user_id    String
   product_id String   @db.Uuid
-  price      Float
-  quantity   Int
-  created_at DateTime
-  cart       carts    @relation(fields: [cart_id], references: [id])
-  product    products @relation(fields: [product_id], references: [id])
-  User       User?    @relation(fields: [userId], references: [id])
-  userId     String?
+  rating     Int
+  comment    String
+  created_at DateTime @default(now())
 
-  @@id([cart_id, product_id])
+  user    User    @relation(fields: [user_id], references: [id])
+  product Product @relation(fields: [product_id], references: [id])
+
+  @@unique([user_id, product_id])
 }
 
-model products {
-  id          String        @id @default(uuid())
-  cart_items  cart_items[]
-  order_lines order_lines[]
-}
+model Category {
+  id              String   @id @default(uuid()) @db.Uuid
+  parent_category String?  @db.Uuid
+  slug            String   @unique
+  name            String
+  description     String
+  tags            String[]
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
 
-model order_lines {
-  id         String @id @default(uuid())
-  order_id   String @db.Uuid
-  order      orders @relation(fields: [order_id], references: [id])
-  product_id String @db.Uuid
-  price      Float
-  quantity   Int
+  parent   Category?  @relation("CategoryToCategory", fields: [parent_category], references: [id])
+  children Category[] @relation("CategoryToCategory")
+  products Product[]
 
-  product products @relation(fields: [product_id], references: [id])
+  @@index([parent_category])
+  @@index([slug])
 }

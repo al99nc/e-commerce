@@ -138,7 +138,7 @@ exports.Prisma.UserScalarFieldEnum = {
   company: 'company'
 };
 
-exports.Prisma.CartsScalarFieldEnum = {
+exports.Prisma.CartScalarFieldEnum = {
   id: 'id',
   created_by: 'created_by',
   status: 'status',
@@ -146,20 +146,20 @@ exports.Prisma.CartsScalarFieldEnum = {
   updated_at: 'updated_at'
 };
 
-exports.Prisma.OrdersScalarFieldEnum = {
+exports.Prisma.OrderScalarFieldEnum = {
   id: 'id',
   user_id: 'user_id',
   created_at: 'created_at'
 };
 
-exports.Prisma.Social_profilesScalarFieldEnum = {
+exports.Prisma.SocialProfileScalarFieldEnum = {
   user_id: 'user_id',
   platform: 'platform',
   platform_user: 'platform_user',
   created_at: 'created_at'
 };
 
-exports.Prisma.CredentialsScalarFieldEnum = {
+exports.Prisma.CredentialScalarFieldEnum = {
   provider_id: 'provider_id',
   provider_key: 'provider_key',
   user_id: 'user_id',
@@ -168,25 +168,56 @@ exports.Prisma.CredentialsScalarFieldEnum = {
   password_salt: 'password_salt'
 };
 
-exports.Prisma.Cart_itemsScalarFieldEnum = {
+exports.Prisma.CartItemScalarFieldEnum = {
+  id: 'id',
+  created_at: 'created_at',
   cart_id: 'cart_id',
   product_id: 'product_id',
   price: 'price',
-  quantity: 'quantity',
+  quantity: 'quantity'
+};
+
+exports.Prisma.ProductScalarFieldEnum = {
+  id: 'id',
+  category_id: 'category_id',
+  title: 'title',
+  picture: 'picture',
+  summary: 'summary',
+  description: 'description',
+  price: 'price',
+  discount_type: 'discount_type',
+  discount_value: 'discount_value',
+  tags: 'tags',
   created_at: 'created_at',
-  userId: 'userId'
+  updated_at: 'updated_at'
 };
 
-exports.Prisma.ProductsScalarFieldEnum = {
-  id: 'id'
-};
-
-exports.Prisma.Order_linesScalarFieldEnum = {
+exports.Prisma.OrderLineScalarFieldEnum = {
   id: 'id',
   order_id: 'order_id',
   product_id: 'product_id',
   price: 'price',
   quantity: 'quantity'
+};
+
+exports.Prisma.ReviewScalarFieldEnum = {
+  id: 'id',
+  user_id: 'user_id',
+  product_id: 'product_id',
+  rating: 'rating',
+  comment: 'comment',
+  created_at: 'created_at'
+};
+
+exports.Prisma.CategoryScalarFieldEnum = {
+  id: 'id',
+  parent_category: 'parent_category',
+  slug: 'slug',
+  name: 'name',
+  description: 'description',
+  tags: 'tags',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
 };
 
 exports.Prisma.SortOrder = {
@@ -221,35 +252,43 @@ exports.Status = exports.$Enums.Status = {
   ABANDONNED: 'ABANDONNED'
 };
 
-exports.social_platform = exports.$Enums.social_platform = {
+exports.SocialPlatform = exports.$Enums.SocialPlatform = {
   FACEBOOK: 'FACEBOOK',
-  GITHUP: 'GITHUP',
-  INSTGRAM: 'INSTGRAM',
+  GITHUB: 'GITHUB',
+  INSTAGRAM: 'INSTAGRAM',
   TWITTER: 'TWITTER'
 };
 
-exports.provider = exports.$Enums.provider = {
+exports.Provider = exports.$Enums.Provider = {
   GOOGLE: 'GOOGLE',
   FACEBOOK: 'FACEBOOK',
   TWITTER: 'TWITTER',
   EMAIL: 'EMAIL'
 };
 
-exports.hash_method = exports.$Enums.hash_method = {
+exports.HashMethod = exports.$Enums.HashMethod = {
   md5: 'md5',
   sha1: 'sha1',
-  sha265: 'sha265'
+  sha256: 'sha256'
+};
+
+exports.DiscountType = exports.$Enums.DiscountType = {
+  none: 'none',
+  percent: 'percent',
+  amount: 'amount'
 };
 
 exports.Prisma.ModelName = {
   User: 'User',
-  carts: 'carts',
-  orders: 'orders',
-  social_profiles: 'social_profiles',
-  credentials: 'credentials',
-  cart_items: 'cart_items',
-  products: 'products',
-  order_lines: 'order_lines'
+  Cart: 'Cart',
+  Order: 'Order',
+  SocialProfile: 'SocialProfile',
+  Credential: 'Credential',
+  CartItem: 'CartItem',
+  Product: 'Product',
+  OrderLine: 'OrderLine',
+  Review: 'Review',
+  Category: 'Category'
 };
 
 /**
