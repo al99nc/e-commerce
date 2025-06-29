@@ -1,0 +1,145 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String            @id @default(uuid())
+  slug            String            @unique
+  email           String            @unique
+  phone           String            @unique
+  role            UserRole
+  name            String
+  avatar          String            @db.Text
+  locale          Locale
+  created_at      DateTime          @default(now())
+  updated_at      DateTime          @updatedAt
+  last_login      DateTime?
+  email_validated DateTime?
+  phone_validated DateTime?
+  bio             String?
+  company         String?
+  carts           carts[]
+  orders          orders[]
+  social_profiles social_profiles[]
+  credentials     credentials[]
+  cart_items      cart_items[]
+}
+
+enum UserRole {
+  ADMIN
+  CUSTOMER
+  STAFF
+}
+
+enum Locale {
+  EN
+  AR
+  FR
+}
+
+model carts {
+  id         String       @id @default(uuid()) @db.Uuid
+  created_by String
+  created    User         @relation(fields: [created_by], references: [id])
+  status     Status
+  created_at DateTime
+  updated_at DateTime
+  cart_items cart_items[]
+}
+
+enum Status {
+  ACTIVE
+  ORDERED
+  ABANDONNED
+}
+
+model orders {
+  id          String        @id @default(uuid())
+  user_id     String
+  user        User          @relation(fields: [user_id], references: [id])
+  created_at  DateTime
+  order_lines order_lines[]
+}
+
+model social_profiles {
+  user_id       String
+  user          User            @relation(fields: [user_id], references: [id])
+  platform      social_platform
+  platform_user String
+  created_at    DateTime
+
+  @@id([user_id, platform])
+}
+
+enum social_platform {
+  FACEBOOK
+  GITHUP
+  INSTGRAM
+  TWITTER
+}
+
+model credentials {
+  provider_id   provider
+  provider_key  String
+  user_id       String      @id
+  user          User        @relation(fields: [user_id], references: [id])
+  hasher        hash_method
+  password_hash String
+  password_salt String
+}
+
+enum provider {
+  GOOGLE
+  FACEBOOK
+  TWITTER
+  EMAIL
+}
+
+enum hash_method {
+  md5
+  sha1
+  sha265
+}
+
+model cart_items {
+  cart_id    String   @db.Uuid
+  product_id String   @db.Uuid
+  price      Float
+  quantity   Int
+  created_at DateTime
+  cart       carts    @relation(fields: [cart_id], references: [id])
+  product    products @relation(fields: [product_id], references: [id])
+  User       User?    @relation(fields: [userId], references: [id])
+  userId     String?
+
+  @@id([cart_id, product_id])
+}
+
+model products {
+  id          String        @id @default(uuid())
+  cart_items  cart_items[]
+  order_lines order_lines[]
+}
+
+model order_lines {
+  id         String @id @default(uuid())
+  order_id   String @db.Uuid
+  order      orders @relation(fields: [order_id], references: [id])
+  product_id String @db.Uuid
+  price      Float
+  quantity   Int
+
+  product products @relation(fields: [product_id], references: [id])
+}

@@ -27,13 +27,20 @@ const products = [
     description: "it's a gaming mouse",
     img: "https://picsum.photos/200/300",
   },
+  {
+    id: 3,
+    title: "not Gaming Mouse",
+    price: 29,
+    description: "it's not a gaming mouse",
+    img: "https://picsum.photos/200/300",
+  },
 ];
 app.get("/", (req, res) => {
   //so when the user go the home page his roll will be a buyer and not a seller so we'll just display the products for now
   res.json(products);
 });
 
-app.get("/api/products", (req, res) => {
+app.get("/products", (req, res) => {
   res.json(products);
 });
 
