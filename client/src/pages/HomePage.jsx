@@ -10,7 +10,7 @@ function HomePage() {
       <ProductDetails />
       <button
         onClick={() => {
-          navigate("/login");
+          navigate("/login"); //you know wwhat to do i really love you 😘😘
         }}
       >
         login
