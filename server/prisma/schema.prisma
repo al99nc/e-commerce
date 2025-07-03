@@ -14,10 +14,11 @@ model User {
   slug            String    @unique
   email           String    @unique
   phone           String    @unique
-  role            UserRole
+  password        String
+  role            UserRole  @default(CUSTOMER)
   name            String
   avatar          String    @db.Text
-  locale          Locale
+  locale          Locale    @default(en)
   created_at      DateTime  @default(now())
   updated_at      DateTime  @updatedAt
   last_login      DateTime?
@@ -40,9 +41,8 @@ enum UserRole {
 }
 
 enum Locale {
-  EN
-  AR
-  FR
+  en
+  ar
 }
 
 model Cart {

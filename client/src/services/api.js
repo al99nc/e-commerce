@@ -14,7 +14,6 @@ export const fetchProductById = async (id) => {
 
 // Simple signup function like your product functions
 export const signup = async (userData) => {
-  const response = await axios.post("http://localhost:3000/signup", userData);
-  console.log(response);
+  const response = await axios.post("http://localhost:4000/signup", userData);
   return response.data;
 };

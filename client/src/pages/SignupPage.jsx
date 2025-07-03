@@ -1,23 +1,24 @@
-// components/SignupForm.jsx
 import React, { useState } from "react";
-import { signup } from "../api";
+import { signup } from "../services/api";
+import { useNavigate } from "react-router-dom";
 
-const SignupForm = () => {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+function SignupPage() {
+  const [name, setName] = useState(""); //me
+  const [email, setEmail] = useState(""); //you can create this as obj so when someone read the code dont think you an dmup
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); //ai + its not that important
   const [error, setError] = useState("");
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e.preventDefault(); //so the page dont reload
     setLoading(true);
     setError("");
 
     try {
       const result = await signup({
-        name: name,
+        name: name, //this is the userData
         email: email,
         phone: phone,
         password: password,
@@ -28,6 +29,7 @@ const SignupForm = () => {
 
       // save token
       localStorage.setItem("token", result.token);
+      localStorage.setItem("user", JSON.stringify(result.user));
     } catch (error) {
       console.log("signup error:", error);
       setError("Something went wrong");
@@ -85,6 +87,6 @@ const SignupForm = () => {
       </form>
     </div>
   );
-};
+}
 
-export default SignupForm;
+export default SignupPage;

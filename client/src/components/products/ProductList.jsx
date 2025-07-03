@@ -1,30 +1,23 @@
-import ProductCard from "./ProductCard";
-import { fetchProductById } from "../../services/api";
-import { useNavigate } from "react-router-dom";
+import "./ProductList.css";
 
-function ProductList(props) {
-  const navigate = useNavigate();
-
-  const handleProductClick = async (id) => {
-    const product = await fetchProductById(id);
-    console.log("Fetched product:", product);
-  };
-
+function ProductList({ products }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 p-6 bg-gray-100 min-h-screen">
-      {props.products.map((product) => {
-        return (
-          <ProductCard
-            key={product.id}
-            img={product.img}
-            title={product.title}
-            description={product.description}
-            price={product.price}
-            onClick={() => handleProductClick(product.id)} // <-- navigate is called inside handleProductClick
-          />
-        );
-      })}
+    <div className="product-container">
+      <h2>Our Products</h2>
+      <div className="product-grid">
+        {products.map((product) => (
+          <div key={product.id} className="product-card">
+            <img src={product.picture} alt={product.title} />
+            <h3>{product.title}</h3>
+            <p>
+              <strong>${product.price}</strong>
+            </p>
+            <p>{product.description}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
+
 export default ProductList;

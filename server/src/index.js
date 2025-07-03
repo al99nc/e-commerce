@@ -18,6 +18,7 @@ app.use(express.json());
 app.use(morgan("dev"));
 //slugggg generater
 const generateUserSlug = (name) => {
+  //from the internet
   return name
     .toLowerCase()
     .trim()
@@ -30,7 +31,9 @@ app.get("/", (req, res) => {
   res.json(products);
 });
 
-app.get("/products", (req, res) => {
+app.get("/products", async (req, res) => {
+  const products = await prisma.product.findMany();
+
   res.json(products);
 });
 
@@ -78,6 +81,7 @@ app.post("/signup", async (req, res) => {
     });
 
     const token = jwt.sign(
+      //this is form the internet
       { userId: newUser.id, email: newUser.email },
       process.env.JWT_SECRET,
       { expiresIn: "24h" }
@@ -119,6 +123,7 @@ app.post("/login", async (req, res) => {
     res.status(401).json({ error: "Invalid credentials" });
   }
 });
+
 
 app.listen(PORT, () => {
   console.log(` Backend running on http://localhost:${PORT}`);
