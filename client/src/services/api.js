@@ -17,3 +17,8 @@ export const signup = async (userData) => {
   const response = await axios.post("http://localhost:4000/signup", userData);
   return response.data;
 };
+
+export const login = async (userData) => {
+  const response = await axios.post("http://localhost:4000/login", userData);
+  return response.data;
+};

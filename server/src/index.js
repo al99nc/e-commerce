@@ -28,7 +28,7 @@ const generateUserSlug = (name) => {
 
 app.get("/", (req, res) => {
   //so when the user go the home page his roll will be a buyer and not a seller so we'll just display the products for now
-  res.json(products);
+  res.redirect("/products");
 });
 
 app.get("/products", async (req, res) => {
@@ -56,7 +56,7 @@ app.post("/signup", async (req, res) => {
     const { email, password, name, phone } = req.body;
 
     // Check if user exists
-    const existingUser = await prisma.user.findFirst({
+    const existingUser = await prisma.users.findFirst({
       where: { OR: [{ email }, { phone }] },
     });
 
@@ -67,15 +67,15 @@ app.post("/signup", async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const slug = generateUserSlug(name);
 
-    const newUser = await prisma.user.create({
+    const newUser = await prisma.users.create({
       data: {
         slug,
         email,
         phone,
         name,
         password: hashedPassword,
-        role: "CUSTOMER",
-        locale: "en",
+        role: "",
+        locale: "",
         avatar: "",
       },
     });
@@ -104,9 +104,11 @@ app.post("/signup", async (req, res) => {
 // Login Endpoint
 app.post("/login", async (req, res) => {
   const { email, password } = req.body;
-
+  console.log("=== LOGIN ATTEMPT ===");
+  console.log("Email:", email);
+  console.log("Password:", password);
   // Find user
-  const user = await prisma.user.findUnique({
+  const user = await prisma.users.findUnique({
     where: { email },
   });
 
@@ -116,9 +118,20 @@ app.post("/login", async (req, res) => {
 
   // Compare passwords
   const passwordValid = await bcrypt.compare(password, user.password);
-
+  console.log("Password valid:", passwordValid); //
   if (passwordValid) {
-    res.json({ message: "Login successful", userId: user.id });
+    const token = jwt.sign(
+      //this is form the internet
+      { user: user.id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: "24h" }
+    );
+    res.json({
+      message: "Login successful",
+      userId: user.id,
+      token: token, // send the token back
+      user: { id: user.id, email: user.email, name: user.name }, // send user data
+    });
   } else {
     res.status(401).json({ error: "Invalid credentials" });
   }

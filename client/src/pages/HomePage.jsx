@@ -8,10 +8,9 @@ function HomePage() {
   return (
     <div>
       <Header />
-      <h1 className="text-2xl font-bold text-center my-6">Our Products</h1>
       <div>
         <h1>Welcome, {user?.name}</h1>
-        <img src={user?.avatar} className="rounded-full w-10 h-10" />
+        <img src={user?.avatar} className="rounded-full w-10 h-10" alt="" />
       </div>
 
       <ProductDetails />

@@ -9,7 +9,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
+model Users {
   id              String    @id @default(uuid())
   slug            String    @unique
   email           String    @unique
@@ -32,12 +32,17 @@ model User {
   socialProfiles SocialProfile[]
   credentials    Credential[]
   reviews        Review[]
+
+  // Seller-specific relations
+  seller_profile SellerProfile?
+  products       Product[] // Products owned by this seller
 }
 
 enum UserRole {
   ADMIN
   CUSTOMER
   STAFF
+  SELLER // Added SELLER role
 }
 
 enum Locale {
@@ -45,10 +50,48 @@ enum Locale {
   ar
 }
 
+// New model for seller-specific information
+model SellerProfile {
+  id      String @id @default(uuid())
+  user_id String @unique
+  user    Users  @relation(fields: [user_id], references: [id])
+
+  business_name    String
+  business_type    String?
+  tax_id           String?
+  business_address String?
+  business_phone   String?
+  business_email   String?
+
+  bank_account_name   String?
+  bank_account_number String?
+  bank_name           String?
+
+  commission_rate Float        @default(0.05) // 5% default commission
+  status          SellerStatus @default(PENDING)
+
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  approved_at DateTime?
+
+  // Seller metrics
+  total_sales  Float  @default(0)
+  total_orders Int    @default(0)
+  rating       Float?
+  rating_count Int    @default(0)
+}
+
+enum SellerStatus {
+  PENDING // Waiting for approval
+  APPROVED // Can sell products
+  SUSPENDED // Temporarily blocked
+  BANNED // Permanently blocked
+}
+
 model Cart {
   id         String   @id @default(uuid()) @db.Uuid
   created_by String
-  created    User     @relation(fields: [created_by], references: [id])
+  created    Users    @relation(fields: [created_by], references: [id])
   status     Status
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -65,7 +108,7 @@ enum Status {
 model Order {
   id         String   @id @default(uuid()) @db.Uuid
   user_id    String
-  user       User     @relation(fields: [user_id], references: [id])
+  user       Users    @relation(fields: [user_id], references: [id])
   created_at DateTime @default(now())
 
   lines OrderLine[]
@@ -73,7 +116,7 @@ model Order {
 
 model SocialProfile {
   user_id       String
-  user          User           @relation(fields: [user_id], references: [id])
+  user          Users          @relation(fields: [user_id], references: [id])
   platform      SocialPlatform
   platform_user String
   created_at    DateTime       @default(now())
@@ -92,7 +135,7 @@ model Credential {
   provider_id   Provider
   provider_key  String
   user_id       String
-  user          User       @relation(fields: [user_id], references: [id])
+  user          Users      @relation(fields: [user_id], references: [id])
   hasher        HashMethod
   password_hash String
   password_salt String
@@ -128,9 +171,14 @@ model CartItem {
 }
 
 model Product {
-  id             String       @id @default(uuid()) @db.Uuid
-  category_id    String       @db.Uuid
-  category       Category     @relation(fields: [category_id], references: [id])
+  id          String   @id @default(uuid()) @db.Uuid
+  category_id String   @db.Uuid
+  category    Category @relation(fields: [category_id], references: [id])
+
+  // Added seller information
+  seller_id String // The seller who owns this product
+  seller    Users  @relation(fields: [seller_id], references: [id])
+
   title          String
   picture        String
   summary        String
@@ -139,12 +187,24 @@ model Product {
   discount_type  DiscountType @default(none)
   discount_value Float
   tags           String[]
-  created_at     DateTime     @default(now())
-  updated_at     DateTime     @updatedAt
+
+  // Product status and inventory
+  status         ProductStatus @default(ACTIVE)
+  stock_quantity Int           @default(0)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   cart_items  CartItem[]
   order_lines OrderLine[]
   reviews     Review[]
+}
+
+enum ProductStatus {
+  ACTIVE
+  INACTIVE
+  OUT_OF_STOCK
+  PENDING_APPROVAL
 }
 
 enum DiscountType {
@@ -173,7 +233,7 @@ model Review {
   comment    String
   created_at DateTime @default(now())
 
-  user    User    @relation(fields: [user_id], references: [id])
+  user    Users   @relation(fields: [user_id], references: [id])
   product Product @relation(fields: [product_id], references: [id])
 
   @@unique([user_id, product_id])

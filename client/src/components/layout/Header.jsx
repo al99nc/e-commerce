@@ -19,14 +19,15 @@ const Header = () => {
           <li>
             <Link to="/cart">Cart</Link>
           </li>
+          <li>
+            <Link to="/sell">Sell</Link>
+          </li>
         </ul>
       </nav>
 
-      {/* User Actions */}
       <div className="user-actions">
         <Link to="/login">Login</Link>
         <Link to="/signup">Signup</Link>
-        {/* Add cart icon here later */}
       </div>
     </header>
   );
