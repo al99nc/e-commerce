@@ -74,8 +74,8 @@ app.post("/signup", async (req, res) => {
         phone,
         name,
         password: hashedPassword,
-        role: "",
-        locale: "",
+        role: "CUSTOMER",
+        locale: "en",
         avatar: "",
       },
     });
@@ -104,10 +104,7 @@ app.post("/signup", async (req, res) => {
 // Login Endpoint
 app.post("/login", async (req, res) => {
   const { email, password } = req.body;
-  console.log("=== LOGIN ATTEMPT ===");
-  console.log("Email:", email);
-  console.log("Password:", password);
-  // Find user
+
   const user = await prisma.users.findUnique({
     where: { email },
   });
