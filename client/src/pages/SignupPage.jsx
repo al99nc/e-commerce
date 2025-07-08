@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { signup } from "../services/api";
-import { useNavigate } from "react-router-dom";
 
 function SignupPage() {
   const [name, setName] = useState(""); //me
@@ -9,7 +8,6 @@ function SignupPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false); //ai + its not that important
   const [error, setError] = useState("");
-  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault(); //so the page dont reload

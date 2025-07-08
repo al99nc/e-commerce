@@ -76,23 +76,26 @@ app.post("/signup", async (req, res) => {
         password: hashedPassword,
         role: "CUSTOMER",
         locale: "en",
-        avatar: "",
+        avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
+          name
+        )}`, // 🔥 FREE avatar
       },
     });
-
     const token = jwt.sign(
       //this is form the internet
-      { userId: newUser.id, email: newUser.email },
+      { userId: newUser.id, email: newUser.email, role: newUser.role },
       process.env.JWT_SECRET,
       { expiresIn: "24h" }
     );
 
-    res.status(201).json({
+    res.status(200).json({
       success: true,
       user: {
         id: newUser.id,
         email: newUser.email,
         name: newUser.name,
+        role: newUser.role,
+        avatar: newUser.avatar, // 🟢 send it if it's needed
       },
       token,
     });
@@ -123,17 +126,180 @@ app.post("/login", async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: "24h" }
     );
-    res.json({
-      message: "Login successful",
-      userId: user.id,
-      token: token, // send the token back
-      user: { id: user.id, email: user.email, name: user.name }, // send user data
+    res.status(200).json({
+      success: true,
+      user: {
+        id: newUser.id,
+        email: newUser.email,
+        name: newUser.name,
+        role: newUser.role,
+        avatar: newUser.avatar, // 🟢 send it if it's needed
+      },
+      token,
     });
   } else {
     res.status(401).json({ error: "Invalid credentials" });
   }
 });
 
+// Middleware to verify JWT token (add this if you don't have it)
+const verifyToken = (req, res, next) => {
+  const token = req.headers.authorization?.split(" ")[1]; // Bearer token
+
+  if (!token) {
+    return res.status(401).json({ error: "No token provided" });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded; // Add user info to request, if its valed it decodes the users info
+    next(); //to noootttt sttoppp
+  } catch (error) {
+    return res.status(401).json({ error: "Invalid token" });
+  }
+};
+
+// PATCH route to upgrade user to seller AND create seller profile
+app.patch("/become-seller", verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.userId; // Get from verified token
+    const {
+      business_name,
+      business_type,
+      tax_id,
+      business_address,
+      business_phone,
+      business_email,
+    } = req.body;
+
+    // Validate required fields
+    if (!business_name) {
+      return res.status(400).json({ error: "Business name is required" });
+    }
+
+    // Check if user exists and is currently a customer
+    const existingUser = await prisma.users.findUnique({
+      where: { id: userId },
+    });
+
+    if (!existingUser) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    if (existingUser.role !== "CUSTOMER") {
+      return res.status(400).json({
+        error: "User is already a seller or has invalid role",
+      });
+    }
+
+    // Check if seller profile already exists
+    const existingProfile = await prisma.sellerProfile.findUnique({
+      where: { user_id: userId },
+    });
+
+    if (existingProfile) {
+      return res.status(400).json({ error: "Seller profile already exists" });
+    }
+
+    // Use Prisma transaction to do both operations atomically
+    const result = await prisma.$transaction(async (prisma) => {
+      // 1. Update user role to SELLER
+      const updatedUser = await prisma.users.update({
+        where: { id: userId },
+        data: {
+          role: "SELLER",
+        },
+      });
+
+      // 2. Create seller profile
+      const newSellerProfile = await prisma.sellerProfile.create({
+        data: {
+          user_id: userId,
+          business_name,
+          business_type,
+          tax_id,
+          business_address,
+          business_phone,
+          business_email,
+          commission_rate: 0.05, // 5% default
+          status: "PENDING", // Needs approval
+          total_sales: 0,
+          total_orders: 0,
+          rating_count: 0,
+        },
+      });
+
+      return { updatedUser, newSellerProfile };
+    });
+
+    // Generate new token with updated role
+    const newToken = jwt.sign(
+      {
+        userId: result.updatedUser.id,
+        email: result.updatedUser.email,
+        role: result.updatedUser.role,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "24h" }
+    );
+
+    res.status(200).json({
+      success: true,
+      message:
+        "Successfully applied to become a seller! Your application is pending approval.",
+      user: {
+        id: result.updatedUser.id,
+        email: result.updatedUser.email,
+        name: result.updatedUser.name,
+        role: result.updatedUser.role,
+        avatar: result.updatedUser.avatar,
+      },
+      sellerProfile: {
+        id: result.newSellerProfile.id,
+        business_name: result.newSellerProfile.business_name,
+        status: result.newSellerProfile.status,
+        commission_rate: result.newSellerProfile.commission_rate,
+      },
+      token: newToken,
+    });
+  } catch (error) {
+    console.error("Become seller error:", error);
+    res.status(500).json({ error: "Something went wrong" });
+  }
+});
+
+// GET route to fetch seller profile info
+app.get("/users/seller-profile", verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const sellerProfile = await prisma.sellerProfile.findUnique({
+      where: { user_id: userId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatar: true,
+          },
+        },
+      },
+    });
+
+    if (!sellerProfile) {
+      return res.status(404).json({ error: "Seller profile not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      sellerProfile,
+    });
+  } catch (error) {
+    console.error("Get seller profile error:", error);
+    res.status(500).json({ error: "Something went wrong" });
+  }
+});
 
 app.listen(PORT, () => {
   console.log(` Backend running on http://localhost:${PORT}`);

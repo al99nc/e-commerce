@@ -1,7 +1,9 @@
 import React from "react";
 import ProductDetails from "../components/products/ProductDetails";
-import Header from "../components/layout/Header";
-import Footer from "../components/layout/Footer";
+import Header from "../layout/Header";
+import Footer from "../layout/Footer";
+import { Avatar } from "@chakra-ui/react";
+
 function HomePage() {
   const user = JSON.parse(localStorage.getItem("user"));
 
@@ -10,7 +12,7 @@ function HomePage() {
       <Header />
       <div>
         <h1>Welcome, {user?.name}</h1>
-        <img src={user?.avatar} className="rounded-full w-10 h-10" alt="" />
+        <Avatar name={user?.name} src={user?.avatar} />
       </div>
 
       <ProductDetails />
@@ -21,3 +23,4 @@ function HomePage() {
 }
 
 export default HomePage;
+
