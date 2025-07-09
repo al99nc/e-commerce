@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { jwtDecode } from "jwt-decode";
 import { useNavigate } from "react-router-dom";
-import { becomeSellerAPI } from "../services/api";
+import { becomeSeller } from "../services/api";
 import toast, { Toaster } from "react-hot-toast";
 
 function BecomeSellerPage() {
@@ -61,7 +61,7 @@ function BecomeSellerPage() {
     setError("");
 
     try {
-      const response = await becomeSellerAPI(formData);
+      const response = await becomeSeller(formData);
 
       if (response.success) {
         // Update token with new role
@@ -78,7 +78,7 @@ function BecomeSellerPage() {
 
         // Redirect to seller dashboard after delay
         setTimeout(() => {
-          navigate("/seller-dashboard");
+          navigate("/seller-dashboard"); //well work on this and the main thought here is to make the sellpage is the dashbord and you work on that
         }, 2000);
       } else {
         toast.error(response.error || "Failed to submit application");

@@ -6,6 +6,7 @@ import SignupPage from "./pages/SignupPage";
 import LoginPage from "./pages/LoginPage";
 import SellPage from "./pages/SellPage";
 import BecomeSellerPage from "./pages/BecomeSellerPage";
+import SellerDashboardPage from "./pages/SellerDashboardPage";
 function App() {
   return (
     <>
@@ -16,6 +17,7 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/sell" element={<SellPage />} />
           <Route path="/become-seller" element={<BecomeSellerPage />} />
+          <Route path="/seller-dashboard" element={<SellerDashboardPage />} />
         </Routes>
       </BrowserRouter>
     </>

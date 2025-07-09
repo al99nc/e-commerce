@@ -23,14 +23,14 @@ export const login = async (userData) => {
   const response = await axios.post("http://localhost:4000/login", userData);
   return response.data;
 };
-export const becomeSellerAPI = async (formData) => {
+export const becomeSeller = async (formData) => {
   try {
     const token = localStorage.getItem("token");
     const response = await fetch(`${API_BASE_URL}/become-seller`, {
       method: "PATCH",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json", //telles the server were sending json
+        Authorization: `Bearer ${token}`, //this is the Authorization using the jwt
       },
       body: JSON.stringify(formData),
     });
@@ -41,6 +41,43 @@ export const becomeSellerAPI = async (formData) => {
     throw error;
   }
 };
+
+export const getSellerDashboard = async () => {
+  try {
+    const token = localStorage.getItem("token");
+    const response = await fetch(`${API_BASE_URL}/seller-dashboard`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("API Error:", error);
+    throw error;
+  }
+};
+
+export const addProduct = async (formData) => {
+  try {
+    const token = localStorage.getItem("token");
+    const response = await fetch(`${API_BASE_URL}/add-product`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("API Error:", error);
+    throw error;
+  }
+};
+
 
 // You can add more API functions here as needed
 export const getUserProfile = async () => {

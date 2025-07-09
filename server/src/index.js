@@ -248,6 +248,7 @@ app.patch("/become-seller", verifyToken, async (req, res) => {
       message:
         "Successfully applied to become a seller! Your application is pending approval.",
       user: {
+        //this user will be send to forntend to give new info abt the user
         id: result.updatedUser.id,
         email: result.updatedUser.email,
         name: result.updatedUser.name,
@@ -255,26 +256,37 @@ app.patch("/become-seller", verifyToken, async (req, res) => {
         avatar: result.updatedUser.avatar,
       },
       sellerProfile: {
+        //this for the forntend to use the new "sellerprofile" info to make some goodes
         id: result.newSellerProfile.id,
         business_name: result.newSellerProfile.business_name,
         status: result.newSellerProfile.status,
         commission_rate: result.newSellerProfile.commission_rate,
       },
-      token: newToken,
+      token: newToken, //changing the token so the brawser know that the user is a seller now
     });
   } catch (error) {
     console.error("Become seller error:", error);
     res.status(500).json({ error: "Something went wrong" });
   }
 });
+//middleware to check if the user is a seller role...
+const requireSeller = (req, res, next) => {
+  if (req.user.role !== "SELLER") {
+    return res.status(403).json({ error: "Seller access required" });
+  }
+  next();
+};
 
-// GET route to fetch seller profile info
-app.get("/users/seller-profile", verifyToken, async (req, res) => {
+// ============= SELLER DASHBOARD ROUTES =============
+
+// GET: Seller Dashboard Overview
+app.get("/seller-dashboard", verifyToken, requireSeller, async (req, res) => {
   try {
-    const userId = req.user.userId;
+    const sellerId = req.user.userId;
 
+    // Get seller profile with stats
     const sellerProfile = await prisma.sellerProfile.findUnique({
-      where: { user_id: userId },
+      where: { user_id: sellerId },
       include: {
         user: {
           select: {
@@ -291,15 +303,137 @@ app.get("/users/seller-profile", verifyToken, async (req, res) => {
       return res.status(404).json({ error: "Seller profile not found" });
     }
 
-    res.status(200).json({
-      success: true,
-      sellerProfile,
+    // plus thing to see the totle sellers products
+    const productCount = await prisma.product.count({
+      where: { seller_id: sellerId },
     });
+    const products = await prisma.product.findMany({
+      where: { seller_id: sellerId },
+      orderBy: { created_at: "desc" },
+      take: 10, // just latest 5 for example
+    });
+
+    // Get recent orders
+    const recentOrders = await prisma.orderLine.findMany({
+      where: {
+        product: {
+          seller_id: sellerId,
+        },
+      },
+      include: {
+        product: {
+          select: {
+            title: true,
+            picture: true,
+          },
+        },
+        order: {
+          include: {
+            user: {
+              select: {
+                name: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        order: {
+          created_at: "desc",
+        },
+      },
+      take: 5,
+    });
+
+    const dashboardData = {
+      seller: sellerProfile,
+      stats: {
+        totalProducts: productCount,
+        totalSales: sellerProfile.total_sales,
+        totalOrders: sellerProfile.total_orders,
+        rating: sellerProfile.rating,
+        ratingCount: sellerProfile.rating_count,
+      },
+      recentOrders,
+      products,
+    };
+
+    res.json({ success: true, data: dashboardData });
   } catch (error) {
-    console.error("Get seller profile error:", error);
+    console.error("Dashboard error:", error);
     res.status(500).json({ error: "Something went wrong" });
   }
 });
+// ✅ BACKEND - /routes/products.js or similar
+
+// Middleware
+// const multer = require("multer");
+import path from "path";
+ const router = express.Router();
+
+// // Setup multer for image upload
+// const storage = multer.diskStorage({
+//   //work on dat
+//   destination: (req, file, cb) => {
+//     cb(null, "uploads/");
+//   },
+//   filename: (req, file, cb) => {
+//     cb(null, Date.now() + path.extname(file.originalname));
+//   },
+// });
+// const upload = multer({ storage });
+export default router;
+
+
+// POST: Add Product
+router.post("/add-product",verifyToken,requireSeller,   async (req, res) => {
+    try {
+      const {
+        title,
+        summary,
+        description,
+        price,
+        category_id,
+        discount_type,
+        discount_value,
+        tags,
+        stock_quantity,
+      } = req.body;
+
+      const picture = req.file ? `/uploads/${req.file.filename}` : "";
+
+      const newProduct = await prisma.product.create({
+        data: {
+          seller_id: req.user.userId,
+          category_id,
+          title,
+          summary,
+          description,
+          price: parseFloat(price),
+          discount_type,
+          discount_value: parseFloat(discount_value),
+          tags: tags.split(","),
+          stock_quantity: parseInt(stock_quantity),
+          picture,
+        },
+      });
+
+      res.status(201).json({ success: true, product: newProduct });
+    } catch (error) {
+      console.error("Add product error:", error);
+      res.status(500).json({ error: "Something went wrong" });
+    }
+  }
+);
+
+
+
+
+// ✅ FRONTEND - AddProductPage.jsx
+
+//in the chat
+// GET route to fetch seller profile info
 
 app.listen(PORT, () => {
   console.log(` Backend running on http://localhost:${PORT}`);
