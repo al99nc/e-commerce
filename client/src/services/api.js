@@ -1,6 +1,6 @@
 // src/api.js
 import axios from "axios";
-const API_BASE_URL = "http://localhost:3001"; // Change this to your backend URL
+const API_BASE_URL = "http://localhost:4000"; // Change this to your backend URL
 
 export const fetchProducts = async () => {
   const response = await axios.get("http://localhost:4000/products");
