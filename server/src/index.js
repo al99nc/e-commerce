@@ -383,6 +383,8 @@ import path from "path";
 //   },
 // });
 // const upload = multer({ storage });
+//brooooooooo adddddddddddddddddd thissssssssssssssss to the endpointtttttttttttt  upload.single("picture"),
+
 export default router;
 
 
