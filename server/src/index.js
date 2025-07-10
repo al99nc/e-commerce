@@ -429,13 +429,61 @@ router.post("/add-product",verifyToken,requireSeller,   async (req, res) => {
   }
 );
 
+// //add all this upload.single("picture"), +++  // Upload image to Cloudinary if provided
+//       if (req.file) {
+//         const result = await cloudinary.uploader.upload_stream(
+//           {
+//             folder: "ecommerce/products",
+//             resource_type: "image",
+//           },
+//           (error, result) => {
+//             if (error) throw error;
+//             pictureUrl = result.secure_url;
+//             // Save to DB after image upload
+//             saveProduct();
+//           }
+//         );
+//         result.end(req.file.buffer);
+//       } else {
+//         saveProduct();
+//       }
+
+router.post("/add-product", verifyToken,  async (req, res) => {
+    try {
+      const { title, summary, description, price, categoryId } = req.body;
+      const sellerId = req.user.userId;
+
+      let pictureUrl = "";
+
+     
+
+      // Save product to DB
+      async function saveProduct() {
+        const newProduct = await prisma.product.create({
+          data: {
+            seller_id: sellerId,
+            category_id: categoryId,
+            title,
+            summary,
+            description,
+            price: parseFloat(price),
+            picture: pictureUrl,
+            discount_type: "none",
+            discount_value: 0,
+            tags: [],
+          },
+        });
+
+        res.status(201).json({ success: true, product: newProduct });
+      }
+    } catch (err) {
+      console.error("Add product error:", err);
+      res.status(500).json({ error: "Server error while adding product" });
+    }
+  }
+);
 
 
-
-// ✅ FRONTEND - AddProductPage.jsx
-
-//in the chat
-// GET route to fetch seller profile info
 
 app.listen(PORT, () => {
   console.log(` Backend running on http://localhost:${PORT}`);

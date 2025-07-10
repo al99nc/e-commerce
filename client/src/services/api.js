@@ -63,7 +63,7 @@ export const getSellerDashboard = async () => {
 export const addProduct = async (formData) => {
   try {
     const token = localStorage.getItem("token");
-    const response = await fetch(`${API_BASE_URL}/add-product`, {
+    const response = await fetch(`http://localhost:4000/add-product`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
