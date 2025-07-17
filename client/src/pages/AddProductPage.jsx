@@ -10,7 +10,6 @@ function AddProductPage() {
     summary: "",
     description: "",
     price: "",
-    category_id: "",
     discount_type: "none",
     discount_value: "0",
     tags: "",
@@ -79,13 +78,7 @@ function AddProductPage() {
           className="w-full p-2 border rounded"
           required
         />
-        <input
-          name="category_id"
-          placeholder="Category ID"
-          onChange={handleChange}
-          className="w-full p-2 border rounded"
-          required
-        />
+
         <select
           name="discount_type"
           onChange={handleChange}
@@ -126,7 +119,7 @@ function AddProductPage() {
           type="submit"
           className="bg-blue-600 text-white px-4 py-2 rounded"
         >
-          Add Product kjdfvdn
+          Add Product
         </button>
       </form>
     </div>
