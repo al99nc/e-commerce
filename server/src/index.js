@@ -7,6 +7,9 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import multer from "multer";
 import path from "path";
+import bcrypt from "bcrypt";
+import multer from "multer";
+import path from "path";
 
 const prisma = new PrismaClient();
 dotenv.config();
@@ -393,6 +396,7 @@ app.get("/seller-dashboard", verifyToken, requireSeller, async (req, res) => {
 });
 
 // POST: Add Product - FIXED VERSION
+// POST: Add Product - FIXED VERSION
 app.post(
   "/add-product",
   verifyToken,
@@ -400,11 +404,9 @@ app.post(
   upload.single("picture"),
   async (req, res) => {
     try {
-      // Add debugging to see what's being received
       console.log("Request body:", req.body);
       console.log("Request file:", req.file);
 
-      // Check if req.body exists
       if (!req.body) {
         return res.status(400).json({
           error:
@@ -417,24 +419,22 @@ app.post(
         summary,
         description,
         price,
-        category_id,
         discount_type,
         discount_value,
         tags,
         stock_quantity,
       } = req.body;
 
-      // Validate required fields
-      if (!title || !description || !price || !category_id || !stock_quantity) {
+      if (!title || !description || !price || !stock_quantity) {
         return res.status(400).json({
           error:
-            "Missing required fields: title, description, price, category_id, and stock_quantity are required.",
+            "Missing required fields: title, description, price, and stock_quantity are required.",
         });
       }
 
       const picture = req.file ? `/uploads/${req.file.filename}` : "";
 
-      // Parse and validate numeric fields
+      // Parse numeric fields
       const parsedPrice = parseFloat(price);
       const parsedDiscountValue = discount_value
         ? parseFloat(discount_value)
@@ -449,10 +449,26 @@ app.post(
         return res.status(400).json({ error: "Invalid stock quantity" });
       }
 
+      // Get or create default category
+      let defaultCategory = await prisma.category.findFirst({
+        where: { slug: "uncategorized" },
+      });
+
+      if (!defaultCategory) {
+        defaultCategory = await prisma.category.create({
+          data: {
+            slug: "uncategorized",
+            name: "Uncategorized",
+            description: "Default category for uncategorized products",
+            tags: ["default"],
+          },
+        });
+      }
+
       const newProduct = await prisma.product.create({
         data: {
           seller_id: req.user.userId,
-          category_id: parseInt(category_id),
+          category_id: defaultCategory.id, // Use default category
           title,
           summary: summary || "",
           description,
@@ -465,11 +481,10 @@ app.post(
         },
       });
 
-      res.status(201).json({ success: true, product: newProduct });
+      res.status(200).json({ success: true, product: newProduct });
     } catch (error) {
       console.error("Add product error:", error);
 
-      // More specific error handling
       if (error.code === "P2002") {
         return res
           .status(409)
@@ -488,7 +503,6 @@ app.post(
     }
   }
 );
-
 app.listen(PORT, () => {
   console.log(`Backend running on http://localhost:${PORT}`);
 });
