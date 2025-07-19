@@ -193,6 +193,14 @@ function SellerDashboard() {
             >
               Update
             </button>
+            <button
+              className="mt-2 bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600"
+              onClick={() =>
+                (window.location.href = `/delete-product/${product.id}`)
+              }
+            >
+              Delete
+            </button>
           </div>
         ))}
       </div>
