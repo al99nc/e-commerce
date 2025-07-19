@@ -7,9 +7,6 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import multer from "multer";
 import path from "path";
-import bcrypt from "bcrypt";
-import multer from "multer";
-import path from "path";
 
 const prisma = new PrismaClient();
 dotenv.config();
@@ -100,7 +97,7 @@ app.post("/signup", async (req, res) => {
         locale: "en",
         avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
           name
-        )}`, // 🔥 FREE avatar
+        )}`, // 🔥 FREE avatar the avatar shit is ai because its a bitch
       },
     });
     const token = jwt.sign(
@@ -395,8 +392,6 @@ app.get("/seller-dashboard", verifyToken, requireSeller, async (req, res) => {
   }
 });
 
-// POST: Add Product - FIXED VERSION
-// POST: Add Product - FIXED VERSION
 app.post(
   "/add-product",
   verifyToken,
@@ -404,9 +399,6 @@ app.post(
   upload.single("picture"),
   async (req, res) => {
     try {
-      console.log("Request body:", req.body);
-      console.log("Request file:", req.file);
-
       if (!req.body) {
         return res.status(400).json({
           error:
@@ -501,6 +493,35 @@ app.post(
         .status(500)
         .json({ error: "Something went wrong while creating the product" });
     }
+  }
+);
+app.patch(
+  "/edit-product/:id",
+  verifyToken,
+  requireSeller,
+  upload.single("picture"),
+  async (req, res) => {
+    try {
+      const product_id = req.params.id;
+      const {
+        title,
+        summary,
+        description,
+        price,
+        discount_type,
+        discount_value,
+        tags,
+        stock_quantity,
+      } = req.body;
+      if (!title || !description || !price || !stock_quantity) {
+        return res.status(400).json({
+          error:
+            "Missing required fields: title, description, price, and stock_quantity are required.",
+        });
+      }
+
+      const picture = req.file ? `/uploads/${req.file.filename}` : "";
+    } catch (error) {}
   }
 );
 app.listen(PORT, () => {

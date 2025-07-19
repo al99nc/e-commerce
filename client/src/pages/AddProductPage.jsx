@@ -61,7 +61,6 @@ function AddProductPage() {
           placeholder="Summary"
           onChange={handleChange}
           className="w-full p-2 border rounded"
-          required
         />
         <textarea
           name="description"
