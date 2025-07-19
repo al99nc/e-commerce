@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { getSellerDashboard } from "../services/api";
 import toast, { Toaster } from "react-hot-toast";
-
+import { deleteProduct } from "../services/api";
+import { useNavigate } from "react-router-dom";
 function SellerDashboard() {
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
-
+  const navigate = useNavigate(); // ✅ MOVE IT HERE
   useEffect(() => {
     fetchDashboard();
   }, []);
@@ -45,6 +46,16 @@ function SellerDashboard() {
   }
 
   const { seller, stats, recentOrders } = dashboardData;
+  const HandleDelete = async (id) => {
+    try {
+      const res = await deleteProduct(id); // ← calling your API function to delete the product
+      console.log("Deleted:", res); // ← just logging to see if it worked
+      navigate("/seller-dashboard"); // ← boom! Redirecting back to the dashboard after delete
+      window.location.reload();
+    } catch (err) {
+      console.error("Failed to delete product:", err); // ← handles errors gracefully
+    }
+  };
 
   return (
     <div className="max-w-6xl mx-auto p-6 relative">
@@ -195,9 +206,7 @@ function SellerDashboard() {
             </button>
             <button
               className="mt-2 bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600"
-              onClick={() =>
-                (window.location.href = `/delete-product/${product.id}`)
-              }
+              onClick={() => HandleDelete(product.id)}
             >
               Delete
             </button>

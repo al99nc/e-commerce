@@ -79,6 +79,41 @@ export const addProduct = async (formData) => {
   }
 };
 
+export const deleteProduct = async (id) => {
+  try {
+    const token = localStorage.getItem("token");
+    const response = await fetch(`http://localhost:4000/delete-product/${id}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("API Error:", error);
+    throw error;
+  }
+};
+
+export const editProduct = async (id, formData) => {
+  try {
+    const token = localStorage.getItem("token");
+    const response = await fetch(`http://localhost:4000/edit-product/${id}`, {
+      //just
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("API Error:", error);
+    throw error;
+  }
+};
 
 // You can add more API functions here as needed
 export const getUserProfile = async () => {

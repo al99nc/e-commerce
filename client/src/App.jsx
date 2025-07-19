@@ -8,6 +8,7 @@ import SellPage from "./pages/SellPage";
 import BecomeSellerPage from "./pages/BecomeSellerPage";
 import SellerDashboardPage from "./pages/SellerDashboardPage";
 import AddProductPage from "./pages/AddProductPage";
+import EditProductPage from "./pages/EditProductPage";
 function App() {
   return (
     <>
@@ -20,6 +21,8 @@ function App() {
           <Route path="/become-seller" element={<BecomeSellerPage />} />
           <Route path="/seller-dashboard" element={<SellerDashboardPage />} />
           <Route path="/add-product" element={<AddProductPage />} />
+          <Route path="/delete-product/:id" element={<SellerDashboardPage />} />
+          <Route path="/edit-product/:id" element={<EditProductPage />} />
         </Routes>
       </BrowserRouter>
     </>

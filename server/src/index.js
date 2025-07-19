@@ -54,21 +54,17 @@ app.get("/products", async (req, res) => {
 
 app.get("/products/:id", async (req, res) => {
   try {
-    const id = parseInt(req.params.id, 10);
-    const findProduct = await prisma.product.findUnique({
-      where: { id: id },
+    const product = await prisma.product.findUnique({
+      where: { id: req.params.id },
     });
-
-    if (findProduct) {
-      res.json(findProduct);
-    } else {
-      res.status(404).json({ message: "Product not found" });
+    if (!product) {
+      return res.status(404).json({ error: "Product not found" });
     }
+    res.json({ success: true, product });
   } catch (error) {
-    res.status(500).json({ error: "Something went wrong" });
+    res.status(500).json({ error: "Failed to fetch product" });
   }
 });
-
 // Signup Endpoint
 app.post("/signup", async (req, res) => {
   try {
@@ -503,6 +499,14 @@ app.patch(
   async (req, res) => {
     try {
       const product_id = req.params.id;
+
+      if (!req.body) {
+        return res.status(400).json({
+          error:
+            "Request body is missing. Make sure you're sending form data properly.",
+        });
+      }
+
       const {
         title,
         summary,
@@ -513,6 +517,7 @@ app.patch(
         tags,
         stock_quantity,
       } = req.body;
+
       if (!title || !description || !price || !stock_quantity) {
         return res.status(400).json({
           error:
@@ -520,8 +525,88 @@ app.patch(
         });
       }
 
-      const picture = req.file ? `/uploads/${req.file.filename}` : "";
-    } catch (error) {}
+      // Check if the product exists and belongs to the seller
+      const existingProduct = await prisma.product.findFirst({
+        where: {
+          id: product_id,
+          seller_id: req.user.userId,
+        },
+      });
+
+      if (!existingProduct) {
+        return res.status(404).json({
+          error: "Product not found or you don't have permission to edit it.",
+        });
+      }
+
+      // Parse numeric fields
+      const parsedPrice = parseFloat(price);
+      const parsedDiscountValue = discount_value
+        ? parseFloat(discount_value)
+        : 0;
+      const parsedStockQuantity = parseInt(stock_quantity);
+
+      if (isNaN(parsedPrice) || parsedPrice <= 0) {
+        return res.status(400).json({ error: "Invalid price value" });
+      }
+      if (isNaN(parsedStockQuantity) || parsedStockQuantity < 0) {
+        return res.status(400).json({ error: "Invalid stock quantity" });
+      }
+
+      // Only update picture if a new file was uploaded
+      const updateData = {
+        title,
+        summary: summary || "",
+        description,
+        price: parsedPrice,
+        discount_type: discount_type || "none",
+        discount_value: parsedDiscountValue,
+        tags: tags ? tags.split(",").map((tag) => tag.trim()) : [],
+        stock_quantity: parsedStockQuantity,
+      };
+
+      // Add picture to update data only if a new file was uploaded
+      if (req.file) {
+        updateData.picture = `/uploads/${req.file.filename}`;
+      }
+
+      const updatedProduct = await prisma.product.update({
+        where: { id: product_id },
+        data: updateData,
+      });
+
+      res.status(200).json({ success: true, product: updatedProduct });
+    } catch (error) {
+      console.error("Edit product error:", error);
+      if (error.code === "P2002") {
+        return res
+          .status(409)
+          .json({ error: "Product with this title already exists" });
+      }
+      if (error.code === "P2025") {
+        return res.status(404).json({ error: "Product not found" });
+      }
+      res
+        .status(500)
+        .json({ error: "Something went wrong while updating the product" });
+    }
+  }
+);
+app.delete(
+  "/delete-product/:id",
+  verifyToken,
+  requireSeller,
+  async (req, res) => {
+    const { id } = req.params;
+    try {
+      await prisma.product.delete({
+        where: { id },
+      });
+      res.status(200).json({ message: "Product deleted successfully!" });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Failed to delete product" });
+    }
   }
 );
 app.listen(PORT, () => {
