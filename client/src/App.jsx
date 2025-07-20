@@ -9,6 +9,7 @@ import BecomeSellerPage from "./pages/BecomeSellerPage";
 import SellerDashboardPage from "./pages/SellerDashboardPage";
 import AddProductPage from "./pages/AddProductPage";
 import EditProductPage from "./pages/EditProductPage";
+import ProductPage from "./pages/ProductPage";
 function App() {
   return (
     <>
@@ -23,6 +24,7 @@ function App() {
           <Route path="/add-product" element={<AddProductPage />} />
           <Route path="/delete-product/:id" element={<SellerDashboardPage />} />
           <Route path="/edit-product/:id" element={<EditProductPage />} />
+          <Route path="/products/:id" element={<ProductPage />} />
         </Routes>
       </BrowserRouter>
     </>
