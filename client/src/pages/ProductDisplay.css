@@ -127,6 +127,76 @@
   font-size: 14px;
 }
 
+/* Quantity Section - NEW STYLES */
+.quantity-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #D5D9D9;
+}
+
+.quantity-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #0F1111;
+  min-width: 30px;
+}
+
+.quantity-select {
+  padding: 8px 32px 8px 12px;
+  border: 1px solid #D5D9D9;
+  border-radius: 8px;
+  background-color: #F0F2F2;
+  background-image: url('data:image/svg+xml;charset=US-ASCII,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4 5"><path fill="%23666" d="M2 0L0 2h4zm0 5L0 3h4z"/></svg>');
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 12px;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  font-size: 14px;
+  color: #0F1111;
+  cursor: pointer;
+  min-width: 64px;
+  font-family: inherit;
+}
+
+.quantity-select:hover {
+  background-color: #E3E6E6;
+  border-color: #007185;
+}
+
+.quantity-select:focus {
+  outline: none;
+  border-color: #007185;
+  box-shadow: 0 0 0 2px rgba(0, 113, 133, 0.2);
+  background-color: white;
+}
+
+.custom-quantity-input {
+  padding: 8px 12px;
+  border: 1px solid #D5D9D9;
+  border-radius: 8px;
+  background-color: white;
+  font-size: 14px;
+  color: #0F1111;
+  width: 80px;
+  margin-left: 8px;
+}
+
+.custom-quantity-input:focus {
+  outline: none;
+  border-color: #007185;
+  box-shadow: 0 0 0 2px rgba(0, 113, 133, 0.2);
+}
+
+.total-price {
+  font-size: 14px;
+  color: #B12704;
+  font-weight: 500;
+  margin-left: 8px;
+}
 /* Action Section */
 .action-section {
   background-color: #F7F8F8;
@@ -150,6 +220,9 @@
   border: none;
   cursor: pointer;
   transition: background-color 0.2s;
+  text-align: center;
+    text-decoration: none;
+    display: inline-block;
 }
 
 .btn-add-cart {
@@ -253,4 +326,12 @@
   .product-container {
     padding: 16px;
   }
+    .quantity-section {
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+  
+    .quantity-select {
+      min-width: 80px;
+    }
 }

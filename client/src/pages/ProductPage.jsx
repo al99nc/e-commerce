@@ -18,7 +18,7 @@ function ProductPage(props) {
     stock_quantity: "0",
   });
   const [picture, setPicture] = useState(null);
-
+  const [selectedQuantity, setSelectedQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -96,6 +96,28 @@ function ProductPage(props) {
 
   const hasDiscount = form.discount_type !== "none" && form.discount_value > 0;
   const isInStock = form.stock_quantity > 0;
+  const stockCount = parseInt(form.stock_quantity);
+
+  // Generate quantity options (up to 10 or stock quantity, whichever is smaller)
+  const maxQuantity = Math.min(stockCount, 10);
+  const quantityOptions = [];
+  for (let i = 1; i <= maxQuantity; i++) {
+    quantityOptions.push(i);
+  }
+
+  const handleQuantityChange = (e) => {
+    setSelectedQuantity(parseInt(e.target.value));
+  };
+
+  const handleAddToCart = () => {
+    // Pass the selected quantity to your cart function
+    window.location.href = `/add-to-cart/${id}?quantity=${selectedQuantity}`;
+  };
+
+  const handleBuyNow = () => {
+    // Pass the selected quantity to your buy now function
+    window.location.href = `/buy-now/${id}?quantity=${selectedQuantity}`;
+  };
 
   return (
     <div className="product-container">
@@ -155,14 +177,59 @@ function ProductPage(props) {
             )}
           </div>
 
+          {/* Quantity Selector */}
+          {isInStock && (
+            <div className="quantity-section">
+              <label htmlFor="quantity-select" className="quantity-label">
+                Qty:
+              </label>
+              <select
+                id="quantity-select"
+                className="quantity-select"
+                value={selectedQuantity}
+                onChange={handleQuantityChange}
+              >
+                {quantityOptions.map((qty) => (
+                  <option key={qty} value={qty}>
+                    {qty}
+                  </option>
+                ))}
+                {stockCount > 10 && (
+                  <option value="10+">10+ (Select custom amount)</option>
+                )}
+              </select>
+
+              {stockCount > 10 && selectedQuantity === "10+" && (
+                <input
+                  type="number"
+                  className="custom-quantity-input"
+                  min="11"
+                  max={stockCount}
+                  placeholder="Enter quantity"
+                  onChange={(e) =>
+                    setSelectedQuantity(parseInt(e.target.value) || 11)
+                  }
+                />
+              )}
+            </div>
+          )}
+
           {/* Add to Cart Section */}
           <div className="action-section">
             <div className="action-buttons">
-              <button className="btn btn-add-cart" disabled={!isInStock}>
+              <button
+                className="btn btn-add-cart"
+                disabled={!isInStock}
+                onClick={handleAddToCart}
+              >
                 Add to Cart
               </button>
 
-              <button className="btn btn-buy-now" disabled={!isInStock}>
+              <button
+                className="btn btn-buy-now"
+                disabled={!isInStock}
+                onClick={handleBuyNow}
+              >
                 Buy Now
               </button>
             </div>

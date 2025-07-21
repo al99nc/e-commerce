@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { ShoppingCart, Plus, Minus, Trash2, Package } from "lucide-react";
 
 // Mock user ID - replace with your auth system
+const MOCK_USER_ID = "test-user-id-123"; // Or whatever fake ID you want
 
 // Product Card Component
 const ProductCard = ({ product, onAddToCart }) => {
@@ -124,8 +125,8 @@ const CartItemComponent = ({ item, onUpdateQuantity, onRemoveItem }) => {
   );
 };
 
-// Main Cart System Component
-const CartSystem = () => {
+// Main Cart page Component
+function CartPage() {
   const [products, setProducts] = useState([]);
   const [cart, setCart] = useState(null);
   const [cartTotal, setCartTotal] = useState(0);
@@ -373,6 +374,6 @@ const CartSystem = () => {
       </div>
     </div>
   );
-};
+}
 
-export default CartSystem;
+export default CartPage;
