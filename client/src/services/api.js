@@ -115,6 +115,116 @@ export const editProduct = async (id, formData) => {
   }
 };
 
+export const addToCart = async (id, jsonBody) => {
+  try {
+    const token = localStorage.getItem("token");
+
+    const response = await fetch(`http://localhost:4000/add-to-cart/${id}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: jsonBody,
+    });
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("API Error:", error);
+    throw error;
+  }
+};
+
+export const deleteCartItem = async (itemId) => {
+  try {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      throw new Error("No token found");
+    }
+
+    const response = await fetch(`${API_BASE_URL}/cart-item/${itemId}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Failed to delete cart item");
+    }
+
+    return data;
+  } catch (error) {
+    console.error("API Error (deleteCartItem):", error);
+    throw error;
+  }
+};
+
+// In your services/api.js file
+
+// In your services/api.js file
+
+export const getCartItems = async () => {
+  try {
+    const token = localStorage.getItem("token"); // or however you store your token
+
+    const response = await fetch("http://localhost:4000/cart", {
+      // Make sure to include full URL
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+    console.log(response);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
+    }
+
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      const responseText = await response.text();
+      throw new Error("Server returned non-JSON response");
+    }
+
+    const data = await response.json();
+
+    // Your backend returns { items: cartItems }
+    return data.items || [];
+  } catch (error) {
+    console.error("Error fetching cart items:", error);
+    throw error;
+  }
+};
+
+export const checkout = async (cartItems) => {
+  const token = localStorage.getItem("token");
+  const response = await fetch("http://localhost:4000/checkout", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`, // Fixed: Moved inside headers
+    },
+    body: JSON.stringify({
+      cartItems: cartItems.map((item) => ({
+        id: item.product.id, // Make sure we're sending product ID
+        price: item.price,
+        quantity: item.quantity,
+      })),
+    }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || "Checkout failed");
+  }
+  return await response.json();
+};
 // You can add more API functions here as needed
 export const getUserProfile = async () => {
   ////////looooookkkkkkkkkk from here and under this line i don't know shit abt it so you do it read it and do whatever you want with it..........

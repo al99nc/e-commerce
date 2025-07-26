@@ -60,6 +60,7 @@ app.get("/products/:id", async (req, res) => {
     if (!product) {
       return res.status(404).json({ error: "Product not found" });
     }
+    console.log(product);
     res.json({ success: true, product });
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch product" });
@@ -610,23 +611,43 @@ app.delete(
   }
 );
 
+// FIXED VERSION:
+const getOptionalUser = (req, res, next) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    if (token) {
+      req.user = jwt.verify(token, process.env.JWT_SECRET);
+    } else {
+      req.user = null;
+    }
+  } catch {
+    req.user = null;
+  }
+  next();
+};
 app.post(
   "/add-to-cart/:id", // id = product_id
-  verifyToken,
+  getOptionalUser,
   async (req, res) => {
-    const user_id = req.user.id;
+    // TO:
+    const user_id = req.user?.userId;
     const product_id = req.params.id;
     const { quantity = 1 } = req.body; // Default to 1 if not provided
 
     try {
       // Input validation
-      if (!product_id || !user_id) {
+      if (!user_id) {
+        return res.status(400).json({
+          success: false,
+          error: "Missing required id ddd",
+        });
+      }
+      if (!product_id) {
         return res.status(400).json({
           success: false,
           error: "Missing required parameters",
         });
       }
-
       if (quantity < 1 || quantity > 100) {
         return res.status(400).json({
           success: false,
@@ -708,7 +729,7 @@ app.post(
       let message;
 
       if (existingItem) {
-        const newQuantity = existingItem.quantity + quantity;
+        const newQuantity = existingItem.quantity + quantity; //this is some good shit
 
         // Check if new quantity exceeds stock
         if (newQuantity > product.stock_quantity) {
@@ -723,7 +744,7 @@ app.post(
           where: { id: existingItem.id },
           data: {
             quantity: newQuantity,
-            price: actualPrice, // Update price in case it changed
+            price: actualPrice, // Update price in case it changed omg
           },
           include: {
             product: {
@@ -784,6 +805,7 @@ app.post(
 
       // Calculate cart totals
       const totalItems = cartSummary.items.reduce(
+        // reunderstane this shirtititit
         (sum, item) => sum + item.quantity,
         0
       );
@@ -830,6 +852,143 @@ app.post(
     }
   }
 );
+
+// GET /cart
+app.get("/cart", getOptionalUser, async (req, res) => {
+  try {
+    const user = req.user;
+    console.log(user);
+    if (!user || !user.userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    // Step 1: Find the user's cart
+    const cart = await prisma.cart.findFirst({
+      where: {
+        created_by: user.userId,
+      },
+    });
+
+    if (!cart) {
+      return res.status(404).json({ error: "Cart not found" });
+    }
+
+    // Step 2: Get the cart items + product info
+    const cartItems = await prisma.cartItem.findMany({
+      //this is the most imp. thing
+      where: {
+        cart_id: cart.id,
+      },
+      include: {
+        product: true, // Include full product info
+      },
+    });
+    console.log(cartItems);
+    return res.json({ items: cartItems });
+  } catch (err) {
+    console.error("Error fetching cart items:", err);
+    return res.status(500).json({ error: "Something went wrong." });
+  }
+});
+
+app.delete("/cart-item/:id", async (req, res) => {
+  const itemId = req.params.id;
+  try {
+    await prisma.cartItem.delete({
+      where: { id: itemId },
+    });
+    res.json({ message: "Item deleted!" });
+  } catch (err) {
+    res.status(500).json({ error: "Couldn't delete item" });
+  }
+});
+
+app.post("/checkout", getOptionalUser, async (req, res) => {
+  const { cartItems } = req.body;
+  const userId = req.user?.userId;
+
+  if (!userId) {
+    return res.status(401).json({
+      message: "User must be logged in to checkout",
+    });
+  }
+
+  if (!cartItems || !Array.isArray(cartItems)) {
+    return res.status(400).json({ message: "Invalid cart items data." });
+  }
+
+  if (cartItems.length === 0) {
+    return res.status(400).json({ message: "Cart is empty." });
+  }
+
+  try {
+    // 1. Find the user's active cart
+    const activeCart = await prisma.cart.findFirst({
+      where: {
+        created_by: userId,
+        status: "ACTIVE",
+      },
+      include: {
+        items: true,
+      },
+    });
+
+    if (!activeCart) {
+      return res.status(404).json({ message: "No active cart found." });
+    }
+
+    // 2. Create the order
+    const order = await prisma.order.create({
+      data: {
+        user: { connect: { id: userId } },
+      },
+    });
+
+    // 3. Create order lines
+    const orderLines = await Promise.all(
+      cartItems.map((item) =>
+        prisma.orderLine.create({
+          data: {
+            order_id: order.id,
+            product_id: item.id,
+            price: item.price,
+            quantity: item.quantity,
+          },
+        })
+      )
+    );
+
+    // 4. Delete all cart items
+    await prisma.cartItem.deleteMany({
+      where: {
+        cart_id: activeCart.id,
+      },
+    });
+
+    // 5. Update cart status to ORDERED
+    await prisma.cart.update({
+      where: {
+        id: activeCart.id,
+      },
+      data: {
+        status: "ORDERED",
+        updated_at: new Date(),
+      },
+    });
+
+    res.status(201).json({
+      message: "Order created successfully",
+      order,
+      orderLines,
+    });
+  } catch (err) {
+    console.error("Checkout error:", err);
+    res.status(500).json({
+      message: "Something went wrong during checkout.",
+      error: err.message,
+    });
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`Backend running on http://localhost:${PORT}`);

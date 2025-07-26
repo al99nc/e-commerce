@@ -11,10 +11,12 @@ import AddProductPage from "./pages/AddProductPage";
 import EditProductPage from "./pages/EditProductPage";
 import ProductPage from "./pages/ProductPage";
 import CartPage from "./pages/CartPage";
+import Header from "./layout/Header";
 function App() {
   return (
     <>
       <BrowserRouter>
+        <Header /> {/* This makes header appear on ALL pages */}
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/signup" element={<SignupPage />} />
@@ -26,11 +28,11 @@ function App() {
           <Route path="/delete-product/:id" element={<SellerDashboardPage />} />
           <Route path="/edit-product/:id" element={<EditProductPage />} />
           <Route path="/products/:id" element={<ProductPage />} />
-          <Route path="/add-to-cart/:id" element={<CartPage />} />
+          <Route path="/cart" element={<CartPage />} />
         </Routes>
       </BrowserRouter>
     </>
   );
-}
+} 
 
 export default App;

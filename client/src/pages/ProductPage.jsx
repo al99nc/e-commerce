@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { editProduct, fetchProductById } from "../services/api";
+import { fetchProductById } from "../services/api";
+import { addToCart } from "../services/api"; // Already imported
 import toast from "react-hot-toast";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import "./ProductDisplay.css"; // Add this line to connect the CSS
 
 function ProductPage(props) {
-  const navigate = useNavigate();
   const { id } = useParams();
   const [form, setForm] = useState({
     title: "",
@@ -54,37 +54,6 @@ function ProductPage(props) {
     return <div>Loading...</div>;
   }
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const formData = new FormData();
-      for (let key in form) {
-        formData.append(key, form[key]);
-      }
-      if (picture) {
-        formData.append("picture", picture);
-      }
-
-      // Actually send the data to your API
-      const res = await editProduct(id, formData);
-
-      if (res.success) {
-        toast.success("Product updated successfully!");
-        // Optionally navigate somewhere or refetch data
-        navigate(`/products/${id}`);
-      } else {
-        toast.error("Failed to update product");
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error("Something went wrong");
-    }
-  };
-
   const calculateDiscountedPrice = () => {
     if (form.discount_type === "percent" && form.discount_value > 0) {
       return (form.price * (1 - form.discount_value / 100)).toFixed(2);
@@ -109,14 +78,32 @@ function ProductPage(props) {
     setSelectedQuantity(parseInt(e.target.value));
   };
 
-  const handleAddToCart = () => {
-    // Pass the selected quantity to your cart function
-    window.location.href = `/add-to-cart/${id}?quantity=${selectedQuantity}`;
-  };
+  const handleAddToCart = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      console.log("Token being sent:", token);
+      console.log("Token exists:", !!token);
 
+      const formData = JSON.stringify({
+        quantity: selectedQuantity,
+      });
+
+      const result = await addToCart(id, formData);
+      if (result.success) {
+        toast.success(result.message || "Added to cart!");
+        // Redirect to cart page with cart ID
+        window.location.href = `/cart`;
+      } else {
+        toast.error(result.error || "Something went wrong");
+      }
+    } catch (err) {
+      console.error("Add to cart error:", err);
+      toast.error("Failed to add to cart");
+    }
+  };
   const handleBuyNow = () => {
     // Pass the selected quantity to your buy now function
-    window.location.href = `/buy-now/${id}?quantity=${selectedQuantity}`;
+    window.location.href = `/buy-now/${id}`;
   };
 
   return (
@@ -126,7 +113,10 @@ function ProductPage(props) {
         <div className="product-image-section">
           <div className="main-image">
             <img
-              src={form.picture || "/placeholder-image.jpg"}
+              src={
+                form.picture ||
+                "C:/Users/gt store/Desktop/e commerce/server/src/uploads/1753281055503.png"
+              }
               alt={form.title}
             />
           </div>
