@@ -58,23 +58,7 @@ function SellPage() {
   }
 
   if (decoded.role === "SELLER") {
-    return (
-      <div className="max-w-2xl mx-auto p-6">
-        <h1 className="text-2xl font-bold mb-6">Welcome back, seller 🛍️</h1>
-        <div className="bg-green-50 p-6 rounded-lg">
-          <p className="text-green-700 mb-4">
-            You are already a seller! You can manage your products and orders
-            from your dashboard.
-          </p>
-          <Link
-            to="/seller-dashboard"
-            className="bg-green-600 text-white px-6 py-3 rounded-md hover:bg-green-700 transition-colors"
-          >
-            Go to Seller Dashboard
-          </Link>
-        </div>
-      </div>
-    );
+    return (window.location.href = "/seller-dashboard");
   }
 
   return (

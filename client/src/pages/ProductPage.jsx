@@ -1,25 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { fetchProductById } from "../services/api";
-import { addToCart } from "../services/api"; // Already imported
+import { addToCart } from "../services/api";
 import toast from "react-hot-toast";
 import { useParams } from "react-router-dom";
-import "./ProductDisplay.css"; // Add this line to connect the CSS
+import "./ProductDisplay.css";
 
-function ProductPage(props) {
+function ProductPage() {
   const { id } = useParams();
-  const [form, setForm] = useState({
-    title: "",
-    summary: "",
-    description: "",
-    price: "",
-    discount_type: "none",
-    discount_value: "0",
-    tags: "",
-    stock_quantity: "0",
-  });
-  const [picture, setPicture] = useState(null);
+  const [product, setProduct] = useState(null);
   const [selectedQuantity, setSelectedQuantity] = useState(1);
+  const [customQuantity, setCustomQuantity] = useState("");
   const [loading, setLoading] = useState(true);
+  const [addingToCart, setAddingToCart] = useState(false);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -27,45 +19,56 @@ function ProductPage(props) {
         setLoading(true);
         const res = await fetchProductById(id);
         if (res.success) {
-          const product = res.product;
-          setForm({
-            title: product.title || "",
-            summary: product.summary || "",
-            description: product.description || "",
-            price: product.price.toString() || "",
-            discount_type: product.discount_type || "none",
-            discount_value: product.discount_value?.toString() || "0",
-            tags: product.tags?.join(", ") || "",
-            stock_quantity: product.stock_quantity?.toString() || "0",
-          });
+          setProduct(res.product);
+        } else {
+          toast.error("Product not found");
         }
       } catch (err) {
+        console.error("Error fetching product:", err);
         toast.error("Failed to load product");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchProduct();
+    if (id) {
+      fetchProduct();
+    }
   }, [id]);
 
-  // Then in your return:
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="loading-container">
+        <div className="loading-spinner">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div className="error-container">
+        <h2>Product not found</h2>
+        <p>The product you're looking for doesn't exist or has been removed.</p>
+      </div>
+    );
   }
 
   const calculateDiscountedPrice = () => {
-    if (form.discount_type === "percent" && form.discount_value > 0) {
-      return (form.price * (1 - form.discount_value / 100)).toFixed(2);
-    } else if (form.discount_type === "amount" && form.discount_value > 0) {
-      return (form.price - form.discount_value).toFixed(2);
+    const price = parseFloat(product.price);
+    const discountValue = parseFloat(product.discount_value) || 0;
+
+    if (product.discount_type === "percent" && discountValue > 0) {
+      return Math.max(0, price * (1 - discountValue / 100)).toFixed(2);
+    } else if (product.discount_type === "amount" && discountValue > 0) {
+      return Math.max(0, price - discountValue).toFixed(2);
     }
-    return parseFloat(form.price).toFixed(2);
+    return price.toFixed(2);
   };
 
-  const hasDiscount = form.discount_type !== "none" && form.discount_value > 0;
-  const isInStock = form.stock_quantity > 0;
-  const stockCount = parseInt(form.stock_quantity);
+  const hasDiscount =
+    product.discount_type !== "none" && parseFloat(product.discount_value) > 0;
+  const isInStock = product.stock_quantity > 0;
+  const stockCount = parseInt(product.stock_quantity);
 
   // Generate quantity options (up to 10 or stock quantity, whichever is smaller)
   const maxQuantity = Math.min(stockCount, 10);
@@ -75,35 +78,82 @@ function ProductPage(props) {
   }
 
   const handleQuantityChange = (e) => {
-    setSelectedQuantity(parseInt(e.target.value));
+    const value = e.target.value;
+    if (value === "custom") {
+      setSelectedQuantity("custom");
+      setCustomQuantity("");
+    } else {
+      setSelectedQuantity(parseInt(value));
+      setCustomQuantity("");
+    }
+  };
+
+  const handleCustomQuantityChange = (e) => {
+    const value = parseInt(e.target.value) || "";
+    setCustomQuantity(value);
+    if (value) {
+      setSelectedQuantity(value);
+    }
+  };
+
+  const getFinalQuantity = () => {
+    if (selectedQuantity === "custom") {
+      return parseInt(customQuantity) || 1;
+    }
+    return selectedQuantity;
   };
 
   const handleAddToCart = async () => {
     try {
       const token = localStorage.getItem("token");
-      console.log("Token being sent:", token);
-      console.log("Token exists:", !!token);
+      console.log(token);
+      if (!token) {
+        toast.error("Please log in to add items to cart");
+        return;
+      }
 
-      const formData = JSON.stringify({
-        quantity: selectedQuantity,
-      });
+      setAddingToCart(true);
+      const finalQuantity = getFinalQuantity();
+      console.log(finalQuantity);
 
-      const result = await addToCart(id, formData);
+      // Validate quantity
+      if (finalQuantity < 1 || finalQuantity > stockCount) {
+        toast.error(`Please select a quantity between 1 and ${stockCount}`);
+        return;
+      }
+
+      const result = await addToCart(id, { quantity: finalQuantity });
+      console.log(result);
+
       if (result.success) {
         toast.success(result.message || "Added to cart!");
-        // Redirect to cart page with cart ID
+        // Optional: Update local state or refetch cart
         window.location.href = `/cart`;
       } else {
-        toast.error(result.error || "Something went wrong");
+        toast.error(result.error || "Failed to add to cart");
       }
     } catch (err) {
       console.error("Add to cart error:", err);
-      toast.error("Failed to add to cart");
+      if (err.message.includes("401")) {
+        toast.error("Please log in to add items to cart");
+      } else {
+        toast.error("Failed to add to cart");
+      }
+    } finally {
+      setAddingToCart(false);
     }
   };
+
   const handleBuyNow = () => {
-    // Pass the selected quantity to your buy now function
-    window.location.href = `/buy-now/${id}`;
+    const token = localStorage.getItem("token");
+    if (!token) {
+      toast.error("Please log in to continue");
+      return;
+    }
+
+    const finalQuantity = getFinalQuantity();
+    // You can pass quantity as a query parameter
+    window.location.href = `/buy-now/${id}?quantity=${finalQuantity}`;
   };
 
   return (
@@ -114,10 +164,14 @@ function ProductPage(props) {
           <div className="main-image">
             <img
               src={
-                form.picture ||
-                "C:/Users/gt store/Desktop/e commerce/server/src/uploads/1753281055503.png"
+                product.picture
+                  ? `http://localhost:4000${product.picture}` // Fix image URL
+                  : "/placeholder-image.png" // Better fallback
               }
-              alt={form.title}
+              alt={product.title}
+              onError={(e) => {
+                e.target.src = "/placeholder-image.png"; // Fallback on error
+              }}
             />
           </div>
         </div>
@@ -125,16 +179,18 @@ function ProductPage(props) {
         {/* Product Details Section */}
         <div className="product-details">
           {/* Title */}
-          <h1 className="product-title">{form.title}</h1>
+          <h1 className="product-title">{product.title}</h1>
 
           {/* Summary */}
-          {form.summary && <p className="product-summary">{form.summary}</p>}
+          {product.summary && (
+            <p className="product-summary">{product.summary}</p>
+          )}
 
           {/* Price Section */}
           <div className="price-section">
             {hasDiscount && (
               <div className="original-price">
-                List Price: ${parseFloat(form.price).toFixed(2)}
+                List Price: ${parseFloat(product.price).toFixed(2)}
               </div>
             )}
 
@@ -144,9 +200,9 @@ function ProductPage(props) {
               {hasDiscount && (
                 <span className="discount-badge">
                   Save{" "}
-                  {form.discount_type === "percent"
-                    ? `${form.discount_value}%`
-                    : `$${form.discount_value}`}
+                  {product.discount_type === "percent"
+                    ? `${product.discount_value}%`
+                    : `$${product.discount_value}`}
                 </span>
               )}
             </div>
@@ -162,7 +218,7 @@ function ProductPage(props) {
             </span>
             {isInStock && (
               <span className="stock-count">
-                ({form.stock_quantity} available)
+                ({product.stock_quantity} available)
               </span>
             )}
           </div>
@@ -185,20 +241,19 @@ function ProductPage(props) {
                   </option>
                 ))}
                 {stockCount > 10 && (
-                  <option value="10+">10+ (Select custom amount)</option>
+                  <option value="custom">Custom (11-{stockCount})</option>
                 )}
               </select>
 
-              {stockCount > 10 && selectedQuantity === "10+" && (
+              {selectedQuantity === "custom" && (
                 <input
                   type="number"
                   className="custom-quantity-input"
                   min="11"
                   max={stockCount}
+                  value={customQuantity}
                   placeholder="Enter quantity"
-                  onChange={(e) =>
-                    setSelectedQuantity(parseInt(e.target.value) || 11)
-                  }
+                  onChange={handleCustomQuantityChange}
                 />
               )}
             </div>
@@ -209,10 +264,10 @@ function ProductPage(props) {
             <div className="action-buttons">
               <button
                 className="btn btn-add-cart"
-                disabled={!isInStock}
-                onClick={handleAddToCart}
+                disabled={!isInStock || addingToCart}
+                onClick={handleAddToCart} // 🔥 this is the fix
               >
-                Add to Cart
+                {addingToCart ? "Adding..." : "Add to Cart"}
               </button>
 
               <button
@@ -231,11 +286,11 @@ function ProductPage(props) {
           </div>
 
           {/* Tags */}
-          {form.tags && (
+          {product.tags && product.tags.length > 0 && (
             <div className="tags-section">
               <h3 className="tags-title">Tags:</h3>
               <div className="tags-list">
-                {form.tags.split(",").map((tag, index) => (
+                {product.tags.map((tag, index) => (
                   <span key={index} className="tag">
                     {tag.trim()}
                   </span>
@@ -249,7 +304,7 @@ function ProductPage(props) {
       {/* Product Description */}
       <div className="description-section">
         <h2 className="description-title">Product Description</h2>
-        <p className="description-text">{form.description}</p>
+        <p className="description-text">{product.description}</p>
       </div>
     </div>
   );

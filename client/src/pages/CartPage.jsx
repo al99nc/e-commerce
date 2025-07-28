@@ -11,6 +11,10 @@ function CartPage() {
     const fetchCart = async () => {
       try {
         const items = await getCartItems();
+        console.log(items);
+        console.log(cartItems);
+        
+        
         setCartItems(items);
       } catch (err) {
         console.error("Failed to fetch cart items", err);

@@ -125,7 +125,7 @@ export const addToCart = async (id, jsonBody) => {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: jsonBody,
+      body: JSON.stringify(jsonBody), // Using the correct parameter name
     });
 
     const data = await response.json();
@@ -135,7 +135,6 @@ export const addToCart = async (id, jsonBody) => {
     throw error;
   }
 };
-
 export const deleteCartItem = async (itemId) => {
   try {
     const token = localStorage.getItem("token");
@@ -180,7 +179,7 @@ export const getCartItems = async () => {
         "Content-Type": "application/json",
       },
     });
-    console.log(response);
+    console.log("----cart response ----", response);
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`HTTP ${response.status}: ${errorText}`);
@@ -202,32 +201,24 @@ export const getCartItems = async () => {
   }
 };
 
-export const checkout = async (cartItems) => {
+export const checkout = async () => {
   const token = localStorage.getItem("token");
   const response = await fetch("http://localhost:4000/checkout", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`, // Fixed: Moved inside headers
+      Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({
-      cartItems: cartItems.map((item) => ({
-        id: item.product.id, // Make sure we're sending product ID
-        price: item.price,
-        quantity: item.quantity,
-      })),
-    }),
   });
 
   if (!response.ok) {
     const errorData = await response.json();
-    throw new Error(errorData.message || "Checkout failed");
+    throw new Error(errorData.error || "Checkout failed"); // Note: changed to 'error' to match backend
   }
   return await response.json();
 };
-// You can add more API functions here as needed
+
 export const getUserProfile = async () => {
-  ////////looooookkkkkkkkkk from here and under this line i don't know shit abt it so you do it read it and do whatever you want with it..........
   try {
     const token = localStorage.getItem("token");
 
@@ -235,7 +226,7 @@ export const getUserProfile = async () => {
       throw new Error("No token found");
     }
 
-    const response = await fetch(`${API_BASE_URL}/users/me`, {
+    const response = await fetch("http://localhost:4000/account", {
       method: "GET",
       headers: {
         Authorization: `Bearer ${token}`,

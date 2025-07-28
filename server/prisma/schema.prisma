@@ -10,7 +10,7 @@ datasource db {
 }
 
 model Users {
-  id              String    @id @default(uuid())
+  id              String    @id @default(uuid()) @db.Uuid
   slug            String    @unique
   email           String    @unique
   phone           String    @unique
@@ -52,8 +52,8 @@ enum Locale {
 
 // New model for seller-specific information
 model SellerProfile {
-  id      String @id @default(uuid())
-  user_id String @unique
+  id              String    @id @default(uuid()) @db.Uuid
+  user_id         String    @unique  @db.Uuid
   user    Users  @relation(fields: [user_id], references: [id])
 
   business_name    String
@@ -90,7 +90,7 @@ enum SellerStatus {
 
 model Cart {
   id         String   @id @default(uuid()) @db.Uuid
-  created_by String
+  created_by String   @db.Uuid    // 👈 FIX HERE
   created    Users    @relation(fields: [created_by], references: [id])
   status     Status
   created_at DateTime @default(now())
@@ -107,7 +107,7 @@ enum Status {
 
 model Order {
   id         String   @id @default(uuid()) @db.Uuid
-  user_id    String
+  user_id    String   @db.Uuid
   user       Users    @relation(fields: [user_id], references: [id])
   created_at DateTime @default(now())
 
@@ -115,7 +115,7 @@ model Order {
 }
 
 model SocialProfile {
-  user_id       String
+  user_id       String @db.Uuid
   user          Users          @relation(fields: [user_id], references: [id])
   platform      SocialPlatform
   platform_user String
@@ -134,7 +134,7 @@ enum SocialPlatform {
 model Credential {
   provider_id   Provider
   provider_key  String
-  user_id       String
+  user_id       String @db.Uuid
   user          Users      @relation(fields: [user_id], references: [id])
   hasher        HashMethod
   password_hash String
@@ -170,13 +170,15 @@ model CartItem {
   quantity Int
 }
 
+
+
 model Product {
   id          String   @id @default(uuid()) @db.Uuid
   category_id String?   @db.Uuid
   category    Category? @relation(fields: [category_id], references: [id])
 
   // Added seller information
-  seller_id String // The seller who owns this product
+  seller_id String @db.Uuid// The seller who owns this product
   seller    Users  @relation(fields: [seller_id], references: [id])
 
   title          String
@@ -226,8 +228,8 @@ model OrderLine {
 }
 
 model Review {
-  id         String   @id @default(uuid())
-  user_id    String
+  id         String   @id @default(uuid()) @db.Uuid
+  user_id    String   @db.Uuid
   product_id String   @db.Uuid
   rating     Int
   comment    String

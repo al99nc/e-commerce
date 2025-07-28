@@ -2,7 +2,11 @@ import React from "react";
 
   import { Link } from "react-router-dom";
   import "./Header.css";
+  import { Avatar } from "@chakra-ui/react";
+
   const Header = () => {
+    const user = JSON.parse(localStorage.getItem("user"));
+
     return (
       <header className="header">
         {/* Logo */}
@@ -22,11 +26,18 @@ import React from "react";
             </li>
           </ul>
         </nav>
-
-        <div className="user-actions">
-          <Link to="/login">Login</Link>
-          <Link to="/signup">Signup</Link>
-        </div>
+        {user ? (
+          <div className="">
+            <Link to="/account">
+              <Avatar name={user?.name} src={user?.avatar} />
+            </Link>
+          </div>
+        ) : (
+          <div className="user-actions">
+            <Link to="/login">Login</Link>
+            <Link to="/signup">Signup</Link>
+          </div>
+        )}
       </header>
     );
   };

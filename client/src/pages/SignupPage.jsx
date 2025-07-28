@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { signup } from "../services/api";
+import { Link } from "react-router-dom";
 
 function SignupPage() {
   const [name, setName] = useState(""); //me
@@ -78,6 +79,9 @@ function SignupPage() {
             onChange={(e) => setPassword(e.target.value)}
           />
         </div>
+        <p>
+          oooo you've been here before wolcom <Link to="/login">Login</Link>
+        </p>
 
         <button type="submit" disabled={loading}>
           {loading ? "Creating..." : "Sign Up"}

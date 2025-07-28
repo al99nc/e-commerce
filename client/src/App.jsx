@@ -12,6 +12,7 @@ import EditProductPage from "./pages/EditProductPage";
 import ProductPage from "./pages/ProductPage";
 import CartPage from "./pages/CartPage";
 import Header from "./layout/Header";
+import AccountPage from "./pages/AccountPage";
 function App() {
   return (
     <>
@@ -28,7 +29,9 @@ function App() {
           <Route path="/delete-product/:id" element={<SellerDashboardPage />} />
           <Route path="/edit-product/:id" element={<EditProductPage />} />
           <Route path="/products/:id" element={<ProductPage />} />
+          <Route path="/add-to-cart/:id" element={<ProductPage />} />
           <Route path="/cart" element={<CartPage />} />
+          <Route path="/account" element={<AccountPage />} />
         </Routes>
       </BrowserRouter>
     </>

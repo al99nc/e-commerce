@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { login } from "../services/api";
 import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 function LoginPage() {
   const [email, setEmail] = useState("");
@@ -61,6 +62,9 @@ function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
           />
         </div>
+        <p>
+          First time here? Welcome! <Link to="/signup">Signup</Link>
+        </p>
 
         <button type="submit" disabled={loading}>
           {loading ? "Logging in..." : "Login"}
