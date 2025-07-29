@@ -366,7 +366,7 @@ app.get("/seller-dashboard", verifyToken, requireSeller, async (req, res) => {
           created_at: "desc",
         },
       },
-      take: 5,
+      take: 10,
     });
 
     const dashboardData = {
@@ -1045,6 +1045,44 @@ app.post("/checkout", getOptionalUser, async (req, res) => {
             stock_quantity: orderItem.newStockQuantity,
             status:
               orderItem.newStockQuantity === 0 ? "OUT_OF_STOCK" : undefined,
+          },
+        });
+      }
+      // Calculate and update seller statistics for each product's seller
+      const sellerStats = new Map(); // Track seller updates
+
+      for (const orderLine of orderLines) {
+        // Get the product's seller info
+        const product = await tx.product.findUnique({
+          where: { id: orderLine.product_id },
+          select: { seller_id: true },
+        });
+
+        if (!product.seller_id) continue;
+
+        // Calculate line total
+        const lineTotal = orderLine.price * orderLine.quantity;
+
+        // Update seller statistics tracking
+        if (!sellerStats.has(product.seller_id)) {
+          sellerStats.set(product.seller_id, {
+            total_sales: lineTotal,
+            total_orders: 1,
+          });
+        } else {
+          const stats = sellerStats.get(product.seller_id);
+          stats.total_sales += lineTotal;
+          stats.total_orders += 1;
+        }
+      }
+
+      // Update seller profiles with new statistics
+      for (const [sellerId, stats] of sellerStats) {
+        await tx.sellerProfile.update({
+          where: { user_id: sellerId },
+          data: {
+            total_sales: { increment: stats.total_sales },
+            total_orders: { increment: stats.total_orders },
           },
         });
       }
