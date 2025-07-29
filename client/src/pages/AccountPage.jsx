@@ -11,8 +11,7 @@ function AccountPage() {
       try {
         const res = await getUserProfile();
         console.log(res);
-        setUser(res);
-        console.log(user);
+        setUser(res.user); // Set only the user object from the response
       } catch (err) {
         console.error("Error fetching user:", err);
       }
