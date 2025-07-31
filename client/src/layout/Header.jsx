@@ -1,11 +1,15 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Avatar } from "@chakra-ui/react";
+import { jwtDecode } from "jwt-decode";
+import { useNavigate } from "react-router-dom";
 
 const Header = () => {
   const [user, setUser] = useState(() =>
     JSON.parse(localStorage.getItem("user"))
   );
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const handleStorage = () => {
@@ -17,6 +21,32 @@ const Header = () => {
       window.removeEventListener("storage", handleStorage);
     };
   }, []);
+
+  const token = localStorage.getItem("token");
+  let decoded = null;
+  try {
+    decoded = token ? jwtDecode(token) : null;
+  } catch (err) {
+    console.error("Invalid token", err);
+    decoded = null;
+  }
+
+  // Define public routes that don't require authentication
+  const publicRoutes = ["/", "/login", "/signup"];
+  const isPublicRoute = publicRoutes.includes(location.pathname);
+
+  useEffect(() => {
+    // Only redirect to login if user is on a protected route and not authenticated
+    if (!decoded && !isPublicRoute) {
+      navigate("/login");
+    }
+  }, [decoded, navigate, isPublicRoute]);
+
+  // Helper function to check if user can access a route
+  const canAccessRoute = (route) => {
+    if (publicRoutes.includes(route)) return true;
+    return decoded && decoded.role;
+  };
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
@@ -43,22 +73,37 @@ const Header = () => {
                   Home
                 </Link>
               </li>
-              <li>
-                <Link
-                  to="/cart"
-                  className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
-                >
-                  Cart
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/sell"
-                  className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
-                >
-                  Sell
-                </Link>
-              </li>
+              {/* Only show Cart if user is authenticated */}
+              {decoded && (
+                <li>
+                  <Link
+                    to="/cart"
+                    className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
+                  >
+                    Cart
+                  </Link>
+                </li>
+              )}
+              {/* Only show Sell links if user is authenticated */}
+              {decoded && (
+                <li>
+                  {decoded?.role === "SELLER" ? (
+                    <Link
+                      to="/seller-dashboard"
+                      className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
+                    >
+                      Sell
+                    </Link>
+                  ) : (
+                    <Link
+                      to="/sell"
+                      className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
+                    >
+                      Sell
+                    </Link>
+                  )}
+                </li>
+              )}
             </ul>
           </nav>
 
@@ -129,18 +174,23 @@ const Header = () => {
           >
             Home
           </Link>
-          <Link
-            to="/cart"
-            className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-colors"
-          >
-            Cart
-          </Link>
-          <Link
-            to="/sell"
-            className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-colors"
-          >
-            Sell
-          </Link>
+          {/* Only show protected routes in mobile menu if user is authenticated */}
+          {decoded && (
+            <>
+              <Link
+                to="/cart"
+                className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-colors"
+              >
+                Cart
+              </Link>
+              <Link
+                to="/sell"
+                className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-colors"
+              >
+                Sell
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </header>

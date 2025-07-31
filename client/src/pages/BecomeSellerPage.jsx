@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { jwtDecode } from "jwt-decode";
 import { useNavigate } from "react-router-dom";
 import { becomeSeller } from "../services/api";
@@ -6,6 +6,7 @@ import toast, { Toaster } from "react-hot-toast";
 
 function BecomeSellerPage() {
   const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     business_name: "",
     business_type: "",
@@ -14,45 +15,47 @@ function BecomeSellerPage() {
     business_phone: "",
     business_email: "",
   });
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isRedirecting, setIsRedirecting] = useState(true); // 👈 To wait for auth check
 
   const token = localStorage.getItem("token");
-  let decoded = null;
 
-  try {
-    if (token) {
-      decoded = jwtDecode(token);
-      const currentTime = Date.now() / 1000;
-      if (decoded.exp < currentTime) {
-        localStorage.removeItem("token");
-        decoded = null;
+  useEffect(() => {
+    let decoded = null;
+
+    try {
+      if (token) {
+        decoded = jwtDecode(token);
+        const currentTime = Date.now() / 1000;
+
+        if (decoded.exp < currentTime) {
+          localStorage.removeItem("token");
+          navigate("/login");
+          return;
+        }
+
+        if (decoded.role === "SELLER") {
+          navigate("/seller-dashboard");
+          return;
+        }
+
+        // If logged in and not a seller → show form
+        setIsRedirecting(false);
+      } else {
+        navigate("/login");
       }
+    } catch (err) {
+      console.error("Invalid token:", err);
+      localStorage.removeItem("token");
+      navigate("/login");
     }
-  } catch (error) {
-    console.error("Invalid token:", error);
-    localStorage.removeItem("token");
-    decoded = null;
-  }
-
-  // Redirect if not logged in
-  if (!decoded) {
-    navigate("/login");
-    return null;
-  }
-
-  // Redirect if already a seller
-  if (decoded.role === "SELLER") {
-    navigate("/seller-dashboard");
-    return null;
-  }
+  }, [navigate, token]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
@@ -64,34 +67,36 @@ function BecomeSellerPage() {
       const response = await becomeSeller(formData);
 
       if (response.success) {
-        // Update token with new role
         localStorage.setItem("token", response.token);
 
-        // Show success toast
-        toast.success(
-          "Successfully applied to become a seller! Your application is pending approval.",
-          {
-            duration: 5000,
-            position: "top-right",
-          }
-        );
+        toast.success("Successfully applied to become a seller!", {
+          duration: 5000,
+          position: "top-right",
+        });
 
-        // Redirect to seller dashboard after delay
         setTimeout(() => {
-          navigate("/seller-dashboard"); //well work on this and the main thought here is to make the sellpage is the dashbord and you work on that
+          navigate("/seller-dashboard");
         }, 2000);
       } else {
         toast.error(response.error || "Failed to submit application");
         setError(response.error || "Failed to submit application");
       }
-    } catch (error) {
-      console.error("Error:", error);
+    } catch (err) {
+      console.error("Error:", err);
       toast.error("Something went wrong. Please try again.");
       setError("Something went wrong. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (isRedirecting) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-gray-500 text-lg">Redirecting...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto p-6">
@@ -111,6 +116,7 @@ function BecomeSellerPage() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Business Name */}
         <div>
           <label className="block text-sm font-medium mb-1">
             Business Name *
@@ -126,6 +132,7 @@ function BecomeSellerPage() {
           />
         </div>
 
+        {/* Business Type */}
         <div>
           <label className="block text-sm font-medium mb-1">
             Business Type
@@ -143,6 +150,7 @@ function BecomeSellerPage() {
           </select>
         </div>
 
+        {/* Tax ID */}
         <div>
           <label className="block text-sm font-medium mb-1">Tax ID</label>
           <input
@@ -155,6 +163,7 @@ function BecomeSellerPage() {
           />
         </div>
 
+        {/* Address */}
         <div>
           <label className="block text-sm font-medium mb-1">
             Business Address
@@ -169,6 +178,7 @@ function BecomeSellerPage() {
           />
         </div>
 
+        {/* Phone */}
         <div>
           <label className="block text-sm font-medium mb-1">
             Business Phone
@@ -183,6 +193,7 @@ function BecomeSellerPage() {
           />
         </div>
 
+        {/* Email */}
         <div>
           <label className="block text-sm font-medium mb-1">
             Business Email

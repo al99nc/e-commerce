@@ -47,7 +47,7 @@ function CartPage() {
       await checkout(cartItems);
       toast.success("Order placed successfully!");
       setCartItems([]);
-      navigate("/orders"); // Redirect to orders page after successful checkout
+      navigate("/"); // Redirect to orders page after successful checkout
     } catch (err) {
       toast.error(err.message || "Checkout failed");
       console.error("Checkout error", err);
