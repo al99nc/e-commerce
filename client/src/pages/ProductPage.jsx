@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { fetchProductById } from "../services/api";
-import { addToCart } from "../services/api";
+import { fetchProductById, addToCart } from "../services/api";
+import { useParams, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import { useParams } from "react-router-dom";
-import "./ProductDisplay.css";
 
 function ProductPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [product, setProduct] = useState(null);
   const [selectedQuantity, setSelectedQuantity] = useState(1);
   const [customQuantity, setCustomQuantity] = useState("");
@@ -31,27 +30,8 @@ function ProductPage() {
       }
     };
 
-    if (id) {
-      fetchProduct();
-    }
+    if (id) fetchProduct();
   }, [id]);
-
-  if (loading) {
-    return (
-      <div className="loading-container">
-        <div className="loading-spinner">Loading...</div>
-      </div>
-    );
-  }
-
-  if (!product) {
-    return (
-      <div className="error-container">
-        <h2>Product not found</h2>
-        <p>The product you're looking for doesn't exist or has been removed.</p>
-      </div>
-    );
-  }
 
   const calculateDiscountedPrice = () => {
     const price = parseFloat(product.price);
@@ -66,69 +46,53 @@ function ProductPage() {
   };
 
   const hasDiscount =
-    product.discount_type !== "none" && parseFloat(product.discount_value) > 0;
-  const isInStock = product.stock_quantity > 0;
-  const stockCount = parseInt(product.stock_quantity);
-
-  // Generate quantity options (up to 10 or stock quantity, whichever is smaller)
+    product?.discount_type !== "none" &&
+    parseFloat(product?.discount_value) > 0;
+  const isInStock = product?.stock_quantity > 0;
+  const stockCount = parseInt(product?.stock_quantity) || 0;
   const maxQuantity = Math.min(stockCount, 10);
-  const quantityOptions = [];
-  for (let i = 1; i <= maxQuantity; i++) {
-    quantityOptions.push(i);
-  }
+  const quantityOptions = Array.from({ length: maxQuantity }, (_, i) => i + 1);
 
   const handleQuantityChange = (e) => {
     const value = e.target.value;
-    if (value === "custom") {
-      setSelectedQuantity("custom");
-      setCustomQuantity("");
-    } else {
-      setSelectedQuantity(parseInt(value));
-      setCustomQuantity("");
-    }
+    setSelectedQuantity(value === "custom" ? "custom" : parseInt(value));
+    setCustomQuantity("");
   };
 
   const handleCustomQuantityChange = (e) => {
     const value = parseInt(e.target.value) || "";
     setCustomQuantity(value);
-    if (value) {
-      setSelectedQuantity(value);
-    }
+    if (value) setSelectedQuantity(value);
   };
 
   const getFinalQuantity = () => {
-    if (selectedQuantity === "custom") {
-      return parseInt(customQuantity) || 1;
-    }
-    return selectedQuantity;
+    return selectedQuantity === "custom"
+      ? parseInt(customQuantity) || 1
+      : selectedQuantity;
   };
 
   const handleAddToCart = async () => {
     try {
       const token = localStorage.getItem("token");
-      console.log(token);
       if (!token) {
         toast.error("Please log in to add items to cart");
+        navigate("/login");
         return;
       }
 
       setAddingToCart(true);
       const finalQuantity = getFinalQuantity();
-      console.log(finalQuantity);
 
-      // Validate quantity
       if (finalQuantity < 1 || finalQuantity > stockCount) {
         toast.error(`Please select a quantity between 1 and ${stockCount}`);
         return;
       }
 
       const result = await addToCart(id, { quantity: finalQuantity });
-      console.log(result);
 
       if (result.success) {
-        toast.success(result.message || "Added to cart!");
-        // Optional: Update local state or refetch cart
-        window.location.href = `/cart`;
+        toast.success("Added to cart!");
+        navigate("/cart");
       } else {
         toast.error(result.error || "Failed to add to cart");
       }
@@ -136,6 +100,7 @@ function ProductPage() {
       console.error("Add to cart error:", err);
       if (err.message.includes("401")) {
         toast.error("Please log in to add items to cart");
+        navigate("/login");
       } else {
         toast.error("Failed to add to cart");
       }
@@ -144,167 +109,261 @@ function ProductPage() {
     }
   };
 
-  const handleBuyNow = () => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      toast.error("Please log in to continue");
-      return;
-    }
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-pulse text-xl font-semibold text-gray-600">
+          Loading product...
+        </div>
+      </div>
+    );
+  }
 
-    const finalQuantity = getFinalQuantity();
-    // You can pass quantity as a query parameter
-    window.location.href = `/buy-now/${id}?quantity=${finalQuantity}`;
-  };
+  if (!product) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            Product not found
+          </h2>
+          <p className="text-gray-600 mb-4">
+            The product you're looking for doesn't exist or has been removed.
+          </p>
+          <button
+            onClick={() => navigate("/")}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+          >
+            Return to Home
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="product-container">
-      <div className="product-layout">
-        {/* Product Images Section */}
-        <div className="product-image-section">
-          <div className="main-image">
-            <img
-              src={
-                product.picture
-                  ? `http://localhost:4000${product.picture}` // Fix image URL
-                  : "/placeholder-image.png" // Better fallback
-              }
-              alt={product.title}
-              onError={(e) => {
-                e.target.src = "/placeholder-image.png"; // Fallback on error
-              }}
-            />
+    <div className="min-h-screen bg-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="lg:grid lg:grid-cols-2 lg:gap-x-8 lg:items-start">
+          {/* Image */}
+          <div className="flex flex-col">
+            <div className="w-full aspect-w-1 aspect-h-1 bg-gray-100 rounded-lg overflow-hidden">
+              <img
+                src={
+                  product.picture
+                    ? `http://localhost:4000${product.picture}`
+                    : "/placeholder-image.png"
+                }
+                alt={product.title}
+                className="w-full h-full object-center object-cover"
+                onError={(e) => {
+                  e.target.src = "/placeholder-image.png";
+                }}
+              />
+            </div>
           </div>
-        </div>
 
-        {/* Product Details Section */}
-        <div className="product-details">
-          {/* Title */}
-          <h1 className="product-title">{product.title}</h1>
+          {/* Product info */}
+          <div className="mt-10 px-4 sm:px-0 sm:mt-16 lg:mt-0">
+            {/* Title */}
+            <h1 className="text-3xl font-extrabold tracking-tight text-gray-900">
+              {product.title}
+            </h1>
 
-          {/* Summary */}
-          {product.summary && (
-            <p className="product-summary">{product.summary}</p>
-          )}
+            {/* Summary */}
+            {product.summary && (
+              <p className="mt-4 text-gray-500">{product.summary}</p>
+            )}
 
-          {/* Price Section */}
-          <div className="price-section">
-            {hasDiscount && (
-              <div className="original-price">
-                List Price: ${parseFloat(product.price).toFixed(2)}
+            {/* Price */}
+            <div className="mt-6">
+              {hasDiscount && (
+                <p className="text-sm line-through text-gray-500">
+                  List Price: ${parseFloat(product.price).toFixed(2)}
+                </p>
+              )}
+              <div className="flex items-center">
+                <p className="text-3xl font-bold text-gray-900">
+                  ${calculateDiscountedPrice()}
+                </p>
+                {hasDiscount && (
+                  <span className="ml-3 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    Save{" "}
+                    {product.discount_type === "percent"
+                      ? `${product.discount_value}%`
+                      : `$${product.discount_value}`}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Stock status */}
+            <div className="mt-6">
+              <div className="flex items-center">
+                <div
+                  className={`flex-shrink-0 w-2.5 h-2.5 rounded-full ${
+                    isInStock ? "bg-green-500" : "bg-red-500"
+                  }`}
+                />
+                <p
+                  className={`ml-2 text-sm ${isInStock ? "text-green-600" : "text-red-600"}`}
+                >
+                  {isInStock
+                    ? `In Stock (${product.stock_quantity} available)`
+                    : "Out of Stock"}
+                </p>
+              </div>
+            </div>
+
+            {/* Quantity selector */}
+            {isInStock && (
+              <div className="mt-6">
+                <label
+                  htmlFor="quantity"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Quantity
+                </label>
+                <div className="mt-1 flex space-x-4">
+                  <select
+                    id="quantity"
+                    value={selectedQuantity}
+                    onChange={handleQuantityChange}
+                    className="block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
+                  >
+                    {quantityOptions.map((qty) => (
+                      <option key={qty} value={qty}>
+                        {qty}
+                      </option>
+                    ))}
+                    {stockCount > 10 && (
+                      <option value="custom">Custom (11-{stockCount})</option>
+                    )}
+                  </select>
+
+                  {selectedQuantity === "custom" && (
+                    <input
+                      type="number"
+                      min="11"
+                      max={stockCount}
+                      value={customQuantity}
+                      onChange={handleCustomQuantityChange}
+                      className="block w-32 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                      placeholder="Enter qty"
+                    />
+                  )}
+                </div>
               </div>
             )}
 
-            <div className="current-price">
-              <span className="price">${calculateDiscountedPrice()}</span>
-
-              {hasDiscount && (
-                <span className="discount-badge">
-                  Save{" "}
-                  {product.discount_type === "percent"
-                    ? `${product.discount_value}%`
-                    : `$${product.discount_value}`}
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Stock Status */}
-          <div
-            className={`stock-status ${isInStock ? "in-stock" : "out-stock"}`}
-          >
-            <div className="stock-dot"></div>
-            <span className="stock-text">
-              {isInStock ? "In Stock" : "Out of Stock"}
-            </span>
-            {isInStock && (
-              <span className="stock-count">
-                ({product.stock_quantity} available)
-              </span>
-            )}
-          </div>
-
-          {/* Quantity Selector */}
-          {isInStock && (
-            <div className="quantity-section">
-              <label htmlFor="quantity-select" className="quantity-label">
-                Qty:
-              </label>
-              <select
-                id="quantity-select"
-                className="quantity-select"
-                value={selectedQuantity}
-                onChange={handleQuantityChange}
-              >
-                {quantityOptions.map((qty) => (
-                  <option key={qty} value={qty}>
-                    {qty}
-                  </option>
-                ))}
-                {stockCount > 10 && (
-                  <option value="custom">Custom (11-{stockCount})</option>
-                )}
-              </select>
-
-              {selectedQuantity === "custom" && (
-                <input
-                  type="number"
-                  className="custom-quantity-input"
-                  min="11"
-                  max={stockCount}
-                  value={customQuantity}
-                  placeholder="Enter quantity"
-                  onChange={handleCustomQuantityChange}
-                />
-              )}
-            </div>
-          )}
-
-          {/* Add to Cart Section */}
-          <div className="action-section">
-            <div className="action-buttons">
+            {/* Add to cart & Buy now buttons */}
+            <div className="mt-8 space-y-4">
               <button
-                className="btn btn-add-cart"
+                onClick={handleAddToCart}
                 disabled={!isInStock || addingToCart}
-                onClick={handleAddToCart} // 🔥 this is the fix
+                className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {addingToCart ? "Adding..." : "Add to Cart"}
+                {addingToCart ? (
+                  <>
+                    <svg
+                      className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Adding to Cart...
+                  </>
+                ) : (
+                  "Add to Cart"
+                )}
               </button>
 
               <button
-                className="btn btn-buy-now"
+                onClick={() =>
+                  navigate(`/buy-now/${id}?quantity=${getFinalQuantity()}`)
+                }
                 disabled={!isInStock}
-                onClick={handleBuyNow}
+                className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Buy Now
               </button>
             </div>
 
-            <div className="delivery-info">
-              <p>✓ FREE delivery tomorrow</p>
-              <p>✓ Free returns</p>
-            </div>
-          </div>
-
-          {/* Tags */}
-          {product.tags && product.tags.length > 0 && (
-            <div className="tags-section">
-              <h3 className="tags-title">Tags:</h3>
-              <div className="tags-list">
-                {product.tags.map((tag, index) => (
-                  <span key={index} className="tag">
-                    {tag.trim()}
-                  </span>
-                ))}
+            {/* Delivery info */}
+            <div className="mt-8 border-t border-gray-200 pt-8">
+              <div className="space-y-2">
+                <p className="flex items-center text-sm text-gray-600">
+                  <svg
+                    className="flex-shrink-0 mr-2 h-5 w-5 text-green-500"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  FREE delivery tomorrow
+                </p>
+                <p className="flex items-center text-sm text-gray-600">
+                  <svg
+                    className="flex-shrink-0 mr-2 h-5 w-5 text-green-500"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  Free returns
+                </p>
               </div>
             </div>
-          )}
-        </div>
-      </div>
 
-      {/* Product Description */}
-      <div className="description-section">
-        <h2 className="description-title">Product Description</h2>
-        <p className="description-text">{product.description}</p>
+            {/* Tags */}
+            {product.tags && product.tags.length > 0 && (
+              <div className="mt-8 border-t border-gray-200 pt-8">
+                <h3 className="text-sm font-medium text-gray-900">Tags</h3>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {product.tags.map((tag, index) => (
+                    <span
+                      key={index}
+                      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
+                    >
+                      {tag.trim()}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Product description */}
+        <div className="mt-16 lg:mt-24 border-t border-gray-200 pt-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            Product Description
+          </h2>
+          <div className="prose prose-blue max-w-none">
+            {product.description}
+          </div>
+        </div>
       </div>
     </div>
   );

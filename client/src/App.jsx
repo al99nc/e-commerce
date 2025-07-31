@@ -12,6 +12,7 @@ import EditProductPage from "./pages/EditProductPage";
 import ProductPage from "./pages/ProductPage";
 import CartPage from "./pages/CartPage";
 import Header from "./layout/Header";
+import Footer from "./layout/Footer";
 import AccountPage from "./pages/AccountPage";
 function App() {
   return (
@@ -33,9 +34,10 @@ function App() {
           <Route path="/cart" element={<CartPage />} />
           <Route path="/account" element={<AccountPage />} />
         </Routes>
+        <Footer />
       </BrowserRouter>
     </>
   );
-} 
+}
 
 export default App;
