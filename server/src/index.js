@@ -29,9 +29,14 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// Serve uploaded files
-app.use("/uploads", express.static("uploads"));
-
+// More secure version with some basic protections
+app.use("/uploads", (req, res, next) => {
+  // Prevent directory traversal
+  if (req.url.includes('..')) {
+    return res.status(403).send('Forbidden');
+  }
+  next();
+}, express.static("uploads"));
 //slugggg generater
 const generateUserSlug = (name) => {
   //from the internet
@@ -348,6 +353,7 @@ app.get("/seller-dashboard", verifyToken, requireSeller, async (req, res) => {
           select: {
             title: true,
             picture: true,
+            price: true,
           },
         },
         order: {

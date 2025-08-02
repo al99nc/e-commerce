@@ -15,6 +15,7 @@ function SellerDashboard() {
     try {
       setLoading(true);
       const response = await getSellerDashboard();
+      console.log(response);
 
       if (response.success) {
         setDashboardData(response.data);
@@ -143,7 +144,11 @@ function SellerDashboard() {
                       <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
                         {orderLine.product.picture ? (
                           <img
-                            src={orderLine.product.picture}
+                            src={
+                              orderLine.product.picture
+                                ? `http://localhost:4000${orderLine.product.picture}`
+                                : "/placeholder.png"
+                            }
                             alt={orderLine.product.title}
                             className="w-12 h-12 object-cover rounded-lg"
                           />
@@ -159,16 +164,17 @@ function SellerDashboard() {
                           Customer: {orderLine.order.user.name}
                         </p>
                         <p className="text-sm text-gray-500">
-                          Qty: {orderLine.quantity} × ${orderLine.product.price}
+                          Qty: {orderLine.quantity}
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
                       <p className="font-semibold text-gray-800">
                         $
-                        {(orderLine.quantity * orderLine.product.price).toFixed(
-                          2
-                        )}
+                        {(
+                          orderLine.quantity *
+                          parseInt(orderLine.product.price || 0)
+                        ).toFixed(2)}{" "}
                       </p>
                       <p className="text-sm text-gray-500">
                         {new Date(
@@ -190,7 +196,9 @@ function SellerDashboard() {
         {dashboardData.products.map((product) => (
           <div key={product.id} className="bg-white p-4 rounded shadow-md">
             <img
-              src={product.picture || "/placeholder.png"}
+              src={
+                `http://localhost:4000${product.picture}` || "/placeholder.png"
+              }
               alt={product.title}
               className="h-40 w-full object-cover rounded"
             />
@@ -215,18 +223,9 @@ function SellerDashboard() {
       </div>
 
       {/* Quick Actions */}
-      <div className="mt-10 flex flex-wrap gap-4">
-        <button
-          className="bg-purple-500 text-white px-6 py-3 rounded-lg hover:bg-purple-600 transition-colors"
-          onClick={() => (window.location.href = "/manage-orders")}
-        >
-          Manage Orders
-        </button>
-      </div>
 
-      {/* Floating "+" Button */}
       <button
-        className="fixed bottom-8 right-8 bg-blue-600 text-white text-3xl rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:bg-blue-700 transition-all"
+        className="fixed bottom-8 right-8 bg-blue-600 text-white text-3xl rounded-full w-14 h-14 flex items-center  justify-center shadow-lg hover:bg-blue-700 transition-all"
         onClick={() => (window.location.href = "/add-product")}
       >
         +

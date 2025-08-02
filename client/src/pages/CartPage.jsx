@@ -110,7 +110,10 @@ function CartPage() {
                       {/* Product Image */}
                       <div className="flex-shrink-0 w-24 h-24 bg-gray-100 rounded-md overflow-hidden">
                         <img
-                          src={item.product.picture || "/placeholder.png"}
+                          src={
+                            `http://localhost:4000${item.product.picture}` ||
+                            "/placeholder.png"
+                          }
                           alt={item.product.title}
                           className="w-full h-full object-center object-cover"
                         />
