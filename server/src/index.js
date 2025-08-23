@@ -333,7 +333,7 @@ app.patch("/become-seller", verifyToken, async (req, res) => {
       business_address,
       business_phone,
       business_email,
-    } = validationResult.data;
+    } = validationResult.data; //work here
 
     // Validate required fields
     if (!business_name) {
