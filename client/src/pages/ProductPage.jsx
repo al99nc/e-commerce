@@ -60,15 +60,20 @@ function ProductPage() {
   };
 
   const handleCustomQuantityChange = (e) => {
-    const value = parseInt(e.target.value) || "";
-    setCustomQuantity(value);
-    if (value) setSelectedQuantity(value);
+    const value = e.target.value;
+    // Only allow numbers and empty string
+    if (value === "" || /^[0-9\b]+$/.test(value)) {
+      setCustomQuantity(value);
+    }
   };
 
   const getFinalQuantity = () => {
-    return selectedQuantity === "custom"
-      ? parseInt(customQuantity) || 1
-      : selectedQuantity;
+    if (selectedQuantity === "custom") {
+      const qty = parseInt(customQuantity) || 0;
+      // Validate custom quantity is within allowed range
+      return qty >= 11 && qty <= stockCount ? qty : 1;
+    }
+    return selectedQuantity;
   };
 
   const handleAddToCart = async () => {
@@ -223,7 +228,7 @@ function ProductPage() {
                 >
                   Quantity
                 </label>
-                <div className="mt-1 flex space-x-4">
+                <div className="mt-1 flex space-x-4 items-center">
                   <select
                     id="quantity"
                     value={selectedQuantity}
@@ -241,15 +246,24 @@ function ProductPage() {
                   </select>
 
                   {selectedQuantity === "custom" && (
-                    <input
-                      type="number"
-                      min="11"
-                      max={stockCount}
-                      value={customQuantity}
-                      onChange={handleCustomQuantityChange}
-                      className="block w-32 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                      placeholder="Enter qty"
-                    />
+                    <div className="flex flex-col">
+                      <input
+                        type="number"
+                        min="11"
+                        max={stockCount}
+                        value={customQuantity}
+                        onChange={handleCustomQuantityChange}
+                        className="block w-32 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                        placeholder={`11-${stockCount}`}
+                      />
+                      {customQuantity &&
+                        (parseInt(customQuantity) < 11 ||
+                          parseInt(customQuantity) > stockCount) && (
+                          <p className="text-xs text-red-500 mt-1">
+                            Please enter a value between 11 and {stockCount}
+                          </p>
+                        )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -259,7 +273,13 @@ function ProductPage() {
             <div className="mt-8 space-y-4">
               <button
                 onClick={handleAddToCart}
-                disabled={!isInStock || addingToCart}
+                disabled={
+                  !isInStock ||
+                  addingToCart ||
+                  (selectedQuantity === "custom" &&
+                    (parseInt(customQuantity) < 11 ||
+                      parseInt(customQuantity) > stockCount))
+                }
                 className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {addingToCart ? (
@@ -295,7 +315,12 @@ function ProductPage() {
                 onClick={() =>
                   navigate(`/buy-now/${id}?quantity=${getFinalQuantity()}`)
                 }
-                disabled={!isInStock}
+                disabled={
+                  !isInStock ||
+                  (selectedQuantity === "custom" &&
+                    (parseInt(customQuantity) < 11 ||
+                      parseInt(customQuantity) > stockCount))
+                }
                 className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Buy Now

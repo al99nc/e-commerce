@@ -11,7 +11,8 @@ const api = axios.create({
 // Add request interceptor to attach access token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("accessToken");
+    // ✅ FIXED: Use "token" instead of "accessToken" to match your components
+    const token = localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -28,7 +29,8 @@ api.interceptors.response.use(
     // Check if backend sent a new token in header
     const newToken = response.headers["x-new-access-token"];
     if (newToken) {
-      localStorage.setItem("accessToken", newToken);
+      // ✅ FIXED: Store as "token" to match your components
+      localStorage.setItem("token", newToken);
       console.log("🔄 Token refreshed automatically");
     }
     return response;
@@ -49,8 +51,10 @@ api.interceptors.response.use(
           }
         );
 
-        const newToken = response.data.token;
-        localStorage.setItem("accessToken", newToken);
+        // ✅ FIXED: Backend sends "accessToken", not "token"
+        const newToken = response.data.accessToken;
+        // ✅ FIXED: Store as "token" to match your components
+        localStorage.setItem("token", newToken);
 
         // Update the failed request with new token
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
@@ -59,7 +63,8 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (refreshError) {
         console.error("❌ Token refresh failed, logging out");
-        localStorage.removeItem("accessToken");
+        // ✅ FIXED: Remove "token" instead of "accessToken"
+        localStorage.removeItem("token");
         localStorage.removeItem("user");
         window.location.href = "/login";
         return Promise.reject(refreshError);
@@ -171,7 +176,8 @@ export const logoutUser = async () => {
   } catch (error) {
     console.error("Logout API error:", error);
   } finally {
-    localStorage.removeItem("accessToken");
+    // ✅ FIXED: Remove "token" instead of "accessToken"
+    localStorage.removeItem("token");
     localStorage.removeItem("user");
     window.location.href = "/login";
   }

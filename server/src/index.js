@@ -10,6 +10,7 @@ import path from "path";
 import cookieParser from "cookie-parser";
 import * as z from "zod";
 import { ref } from "process";
+import { log } from "console";
 const prisma = new PrismaClient();
 dotenv.config();
 
@@ -543,42 +544,99 @@ app.post(
         });
       }
 
-      const productSchema = z.object({
-        title: z
-          .string()
-          .min(3, "Title  must be at least 3 characters")
-          .max(200, "Title too long")
-          .trim(),
+      // Parse numeric fields from string to numbers before validation
+      const parsedBody = {
+        ...req.body,
+        price: req.body.price ? parseFloat(req.body.price) : undefined,
+        discount_value: req.body.discount_value
+          ? parseFloat(req.body.discount_value)
+          : 0,
+        stock_quantity: req.body.stock_quantity
+          ? parseInt(req.body.stock_quantity)
+          : undefined,
+        tags: req.body.tags
+          ? typeof req.body.tags === "string"
+            ? req.body.tags
+                .split(",")
+                .map((tag) => tag.trim())
+                .filter((tag) => tag.length > 0)
+            : Array.isArray(req.body.tags)
+              ? req.body.tags
+              : []
+          : [],
+        discount_type: req.body.discount_type || "none",
+      };
 
-        summary: z.string().max(500, "Summary too long").trim().optional(),
+      const productSchema = z
+        .object({
+          title: z
+            .string()
+            .min(3, "Title must be at least 3 characters")
+            .max(200, "Title too long")
+            .trim(),
 
-        description: z
-          .string()
-          .min(10, "Description must be at least 10 characters")
-          .max(2000, "Description too long")
-          .trim(),
+          summary: z.string().max(500, "Summary too long").trim().optional(),
 
-        price: z.number().positive("Price must be greater than 0"),
+          description: z
+            .string()
+            .min(10, "Description must be at least 10 characters")
+            .max(2000, "Description too long")
+            .trim(),
 
-        discount_type: z.enum(["percentage", "fixed", "none"]).optional(),
+          price: z
+            .number({ invalid_type_error: "Price must be a number" })
+            .positive("Price must be greater than 0"),
 
-        discount_value: z
-          .number()
-          .min(0, "Discount cannot be negative")
-          .optional(),
+          discount_type: z
+            .enum(["percentage", "fixed", "none"])
+            .default("none"),
 
-        tags: z.array(z.string()).optional(),
+          discount_value: z
+            .number({ invalid_type_error: "Discount value must be a number" })
+            .min(0, "Discount cannot be negative")
+            .default(0),
 
-        stock_quantity: z
-          .number()
-          .int("Stock must be whole number")
-          .min(0, "Stock cannot be negative"),
-      });
-      const validationResult = productSchema.safeParse(req.body);
+          tags: z.array(z.string().min(1)).default([]),
+
+          stock_quantity: z
+            .number({ invalid_type_error: "Stock quantity must be a number" })
+            .int("Stock must be whole number")
+            .min(0, "Stock cannot be negative"),
+        })
+        .refine(
+          (data) => {
+            // Business rule: if discount_type is percentage, discount_value should be <= 100
+            if (
+              data.discount_type === "percentage" &&
+              data.discount_value > 100
+            ) {
+              return false;
+            }
+            // Business rule: if discount_type is fixed, discount_value should be less than price
+            if (
+              data.discount_type === "fixed" &&
+              data.discount_value >= data.price
+            ) {
+              return false;
+            }
+            return true;
+          },
+          {
+            message:
+              "Invalid discount: percentage cannot exceed 100% or fixed discount cannot be greater than or equal to price",
+            path: ["discount_value"],
+          }
+        );
+
+      const validationResult = productSchema.safeParse(parsedBody);
       if (!validationResult.success) {
         return res.status(400).json({
           error: "Validation failed",
-          details: validationResult.error.errors,
+          details: validationResult.error.errors.map((err) => ({
+            field: err.path.join("."),
+            message: err.message,
+            received: err.received,
+          })),
         });
       }
 
@@ -592,30 +650,6 @@ app.post(
         tags,
         stock_quantity,
       } = validationResult.data;
-
-      if (!title || !description || !price || !stock_quantity) {
-        return res.status(400).json({
-          error:
-            "Missing required fields: title, description, price, and stock_quantity are required.",
-        });
-      }
-
-      const picture = req.file ? `/uploads/${req.file.filename}` : "";
-
-      // Parse numeric fields
-      const parsedPrice = parseFloat(price);
-      const parsedDiscountValue = discount_value
-        ? parseFloat(discount_value)
-        : 0;
-      const parsedStockQuantity = parseInt(stock_quantity);
-
-      if (isNaN(parsedPrice) || parsedPrice <= 0) {
-        return res.status(400).json({ error: "Invalid price value" });
-      }
-
-      if (isNaN(parsedStockQuantity) || parsedStockQuantity < 0) {
-        return res.status(400).json({ error: "Invalid stock quantity" });
-      }
 
       // Get or create default category
       let defaultCategory = await prisma.category.findFirst({
@@ -633,23 +667,25 @@ app.post(
         });
       }
 
+      const picture = req.file ? `/uploads/${req.file.filename}` : "";
+
       const newProduct = await prisma.product.create({
         data: {
           seller_id: req.user.userId,
-          category_id: defaultCategory.id, // Use default category
+          category_id: defaultCategory.id,
           title,
           summary: summary || "",
           description,
-          price: parsedPrice,
-          discount_type: discount_type || "none",
-          discount_value: parsedDiscountValue,
-          tags: tags ? tags.split(",").map((tag) => tag.trim()) : [],
-          stock_quantity: parsedStockQuantity,
+          price: price,
+          discount_type: discount_type,
+          discount_value: discount_value,
+          tags: tags,
+          stock_quantity: stock_quantity,
           picture,
         },
       });
 
-      res.status(200).json({ success: true, product: newProduct });
+      res.status(201).json({ success: true, product: newProduct });
     } catch (error) {
       console.error("Add product error:", error);
 
@@ -679,12 +715,122 @@ app.patch(
   upload.single("picture"),
   async (req, res) => {
     try {
-      const product_id = req.params.id;
+      const { id } = req.params;
+
+      // First check if product exists and belongs to the seller
+      const existingProduct = await prisma.product.findFirst({
+        where: {
+          id: id,
+          seller_id: req.user.userId,
+        },
+      });
+
+      if (!existingProduct) {
+        return res.status(404).json({
+          error: "Product not found or you don't have permission to edit it",
+        });
+      }
 
       if (!req.body) {
         return res.status(400).json({
           error:
             "Request body is missing. Make sure you're sending form data properly.",
+        });
+      }
+
+      // Parse numeric fields from string to numbers before validation
+      const parsedBody = {
+        ...req.body,
+        price: req.body.price
+          ? parseFloat(req.body.price)
+          : existingProduct.price,
+        discount_value: req.body.discount_value
+          ? parseFloat(req.body.discount_value)
+          : existingProduct.discount_value,
+        stock_quantity: req.body.stock_quantity
+          ? parseInt(req.body.stock_quantity)
+          : existingProduct.stock_quantity,
+        tags: req.body.tags
+          ? typeof req.body.tags === "string"
+            ? req.body.tags
+                .split(",")
+                .map((tag) => tag.trim())
+                .filter((tag) => tag.length > 0)
+            : Array.isArray(req.body.tags)
+              ? req.body.tags
+              : existingProduct.tags
+          : existingProduct.tags,
+        discount_type: req.body.discount_type || existingProduct.discount_type,
+      };
+
+      const productSchema = z
+        .object({
+          title: z
+            .string()
+            .min(3, "Title must be at least 3 characters")
+            .max(200, "Title too long")
+            .trim(),
+
+          summary: z.string().max(500, "Summary too long").trim().optional(),
+
+          description: z
+            .string()
+            .min(10, "Description must be at least 10 characters")
+            .max(2000, "Description too long")
+            .trim(),
+
+          price: z
+            .number({ invalid_type_error: "Price must be a number" })
+            .positive("Price must be greater than 0"),
+
+          discount_type: z
+            .enum(["percentage", "fixed", "none"])
+            .default("none"),
+
+          discount_value: z
+            .number({ invalid_type_error: "Discount value must be a number" })
+            .min(0, "Discount cannot be negative")
+            .default(0),
+
+          tags: z.array(z.string().min(1)).default([]),
+
+          stock_quantity: z
+            .number({ invalid_type_error: "Stock quantity must be a number" })
+            .int("Stock must be whole number")
+            .min(0, "Stock cannot be negative"),
+        })
+        .refine(
+          (data) => {
+            if (
+              data.discount_type === "percentage" &&
+              data.discount_value > 100
+            ) {
+              return false;
+            }
+            if (
+              data.discount_type === "fixed" &&
+              data.discount_value >= data.price
+            ) {
+              return false;
+            }
+            return true;
+          },
+          {
+            message:
+              "Invalid discount: percentage cannot exceed 100% or fixed discount cannot be greater than or equal to price",
+            path: ["discount_value"],
+          }
+        );
+
+      const validationResult = productSchema.safeParse(parsedBody);
+      if (!validationResult.success) {
+        return res.status(400).json({
+          error: "Validation failed",
+          details: validationResult.error.errors.map((err) => ({
+            field: err.path.join("."),
+            message: err.message,
+            received: err.received,
+          })),
         });
       }
 
@@ -697,82 +843,52 @@ app.patch(
         discount_value,
         tags,
         stock_quantity,
-      } = req.body;
+      } = validationResult.data;
 
-      if (!title || !description || !price || !stock_quantity) {
-        return res.status(400).json({
-          error:
-            "Missing required fields: title, description, price, and stock_quantity are required.",
-        });
-      }
-
-      // Check if the product exists and belongs to the seller
-      const existingProduct = await prisma.product.findFirst({
-        where: {
-          id: product_id,
-          seller_id: req.user.userId,
-        },
-      });
-
-      if (!existingProduct) {
-        return res.status(404).json({
-          error: "Product not found or you don't have permission to edit it.",
-        });
-      }
-
-      // Parse numeric fields
-      const parsedPrice = parseFloat(price);
-      const parsedDiscountValue = discount_value
-        ? parseFloat(discount_value)
-        : 0;
-      const parsedStockQuantity = parseInt(stock_quantity);
-
-      if (isNaN(parsedPrice) || parsedPrice <= 0) {
-        return res.status(400).json({ error: "Invalid price value" });
-      }
-      if (isNaN(parsedStockQuantity) || parsedStockQuantity < 0) {
-        return res.status(400).json({ error: "Invalid stock quantity" });
-      }
-
-      // Only update picture if a new file was uploaded
+      // Handle picture update (only if new picture uploaded)
       const updateData = {
         title,
         summary: summary || "",
         description,
-        price: parsedPrice,
-        discount_type: discount_type || "none",
-        discount_value: parsedDiscountValue,
-        tags: tags ? tags.split(",").map((tag) => tag.trim()) : [],
-        stock_quantity: parsedStockQuantity,
+        price: price,
+        discount_type: discount_type,
+        discount_value: discount_value,
+        tags: tags,
+        stock_quantity: stock_quantity,
       };
 
-      // Add picture to update data only if a new file was uploaded
+      // Only update picture if a new one was uploaded
       if (req.file) {
         updateData.picture = `/uploads/${req.file.filename}`;
       }
 
       const updatedProduct = await prisma.product.update({
-        where: { id: product_id },
+        where: { id: id },
         data: updateData,
       });
 
       res.status(200).json({ success: true, product: updatedProduct });
     } catch (error) {
       console.error("Edit product error:", error);
+
       if (error.code === "P2002") {
         return res
           .status(409)
           .json({ error: "Product with this title already exists" });
       }
+
       if (error.code === "P2025") {
         return res.status(404).json({ error: "Product not found" });
       }
+
       res
         .status(500)
         .json({ error: "Something went wrong while updating the product" });
     }
   }
 );
+
+
 
 app.delete(
   "/delete-product/:id",

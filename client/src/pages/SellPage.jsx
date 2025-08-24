@@ -11,14 +11,6 @@ function SellPage() {
   try {
     if (token) {
       decoded = jwtDecode(token);
-
-      // Check if token is expired
-      const currentTime = Date.now() / 1000;
-      if (decoded.exp < currentTime) {
-        localStorage.removeItem("token");
-        decoded = null;
-        toast.error("Session expired. Please login again.");
-      }
     }
   } catch (error) {
     console.error("Invalid token:", error);
