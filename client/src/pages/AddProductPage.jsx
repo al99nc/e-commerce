@@ -13,7 +13,7 @@ function AddProductPage() {
     discount_type: "none",
     discount_value: "0",
     tags: "",
-    stock_quantity: "0",
+    stock_quantity: "",
   });
   const [picture, setPicture] = useState(null);
   const [loading, setLoading] = useState(false);

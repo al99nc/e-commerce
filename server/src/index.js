@@ -543,6 +543,45 @@ app.post(
         });
       }
 
+      const productSchema = z.object({
+        title: z
+          .string()
+          .min(3, "Title  must be at least 3 characters")
+          .max(200, "Title too long")
+          .trim(),
+
+        summary: z.string().max(500, "Summary too long").trim().optional(),
+
+        description: z
+          .string()
+          .min(10, "Description must be at least 10 characters")
+          .max(2000, "Description too long")
+          .trim(),
+
+        price: z.number().positive("Price must be greater than 0"),
+
+        discount_type: z.enum(["percentage", "fixed", "none"]).optional(),
+
+        discount_value: z
+          .number()
+          .min(0, "Discount cannot be negative")
+          .optional(),
+
+        tags: z.array(z.string()).optional(),
+
+        stock_quantity: z
+          .number()
+          .int("Stock must be whole number")
+          .min(0, "Stock cannot be negative"),
+      });
+      const validationResult = productSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({
+          error: "Validation failed",
+          details: validationResult.error.errors,
+        });
+      }
+
       const {
         title,
         summary,
@@ -552,7 +591,7 @@ app.post(
         discount_value,
         tags,
         stock_quantity,
-      } = req.body;
+      } = validationResult.data;
 
       if (!title || !description || !price || !stock_quantity) {
         return res.status(400).json({
@@ -757,20 +796,17 @@ app.delete(
 const getOptionalUserWithRefresh = async (req, res, next) => {
   try {
     const accessToken = req.headers.authorization?.split(" ")[1];
-    // const refreshToken = req.cookies.refreshToken;
-    console.log(accessToken, refreshToken);
+    const refreshToken = req.cookies.refreshToken; // ✅ Uncommented this line
+    console.log("Access Token:", accessToken, "Refresh Token:", refreshToken);
 
     // Try access token first
     if (accessToken) {
       try {
         req.user = jwt.verify(accessToken, process.env.JWT_SECRET);
-        console.log(req.user);
-
+        console.log("User from access token:", req.user);
         return next();
       } catch (error) {
-        console.log(
-          "Access token expired,fielsdfkdnfklndlkfds attempting refresh..."
-        );
+        console.log("Access token expired, attempting refresh...");
       }
     }
 
@@ -804,7 +840,6 @@ const getOptionalUserWithRefresh = async (req, res, next) => {
 
   next();
 };
-
 app.post(
   "/add-to-cart/:id", // id = product_id
   getOptionalUserWithRefresh,
