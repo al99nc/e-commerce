@@ -9,6 +9,7 @@ import multer from "multer";
 import path from "path";
 import cookieParser from "cookie-parser";
 import * as z from "zod";
+import { ref } from "process";
 const prisma = new PrismaClient();
 dotenv.config();
 
@@ -59,9 +60,9 @@ const generateUserSlug = (name) => {
     .replace(/\s+/g, "-"); // replace spaces with dashes
 };
 
-app.get("/", (req, res) => {
-  //so when the user go the home page his roll will be a buyer and not a seller so we'll just display the products for now
-  res.redirect("/products");
+app.get("/", async (req, res) => {
+  const products = await prisma.product.findMany();
+  res.json(products);
 });
 
 app.get("/products", async (req, res) => {
@@ -83,6 +84,20 @@ app.get("/products/:id", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch product" });
   }
 });
+function generateTokens(user) {
+  const accessToken = jwt.sign(
+    { userId: user.id, email: user.email, role: user.role },
+    process.env.JWT_SECRET,
+    { expiresIn: "15m" } // Short-lived access token
+  );
+
+  const refreshToken = jwt.sign(
+    { userId: user.id, email: user.email, role: user.role },
+    process.env.REFRESH_SECRET,
+    { expiresIn: "30d" } // Long-lived refresh token
+  );
+  return { accessToken, refreshToken };
+}
 
 // Signup Endpoint - FIXED with refresh token
 app.post("/signup", async (req, res) => {
@@ -140,37 +155,27 @@ app.post("/signup", async (req, res) => {
     });
 
     // Create both access and refresh tokens
-    const accessToken = jwt.sign(
-      { userId: newUser.id, email: newUser.email, role: newUser.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "15m" } // Short-lived access token
-    );
-
-    const refreshToken = jwt.sign(
-      { userId: newUser.id, email: newUser.email, role: newUser.role },
-      process.env.REFRESH_SECRET,
-      { expiresIn: "7d" } // Long-lived refresh token
-    );
-
+    const tokens = generateTokens(newUser);
     // Set refresh token as httpOnly cookie
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
-
-    res.status(200).json({
-      success: true,
-      user: {
-        id: newUser.id,
-        email: newUser.email,
-        name: newUser.name,
-        role: newUser.role,
-        avatar: newUser.avatar,
-      },
-      token: accessToken, // Send access token to frontend
-    });
+    res
+      .cookie("refreshToken", tokens.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production", // true only in prod with HTTPS
+        sameSite: "strict",
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      })
+      .status(200)
+      .json({
+        success: true,
+        user: {
+          id: newUser.id,
+          email: newUser.email,
+          name: newUser.name,
+          role: newUser.role,
+          avatar: newUser.avatar,
+        },
+        token: tokens.accessToken, // <-- frontend uses this for API calls
+      });
   } catch (error) {
     console.error("Signup error:", error);
     res.status(500).json({ error: "Something went wrong" });
@@ -205,37 +210,27 @@ app.post("/login", async (req, res) => {
 
     if (passwordValid) {
       // Create both access and refresh tokens
-      const accessToken = jwt.sign(
-        { userId: user.id, email: user.email, role: user.role },
-        process.env.JWT_SECRET,
-        { expiresIn: "15m" } // Short-lived access token
-      );
-
-      const refreshToken = jwt.sign(
-        { userId: user.id, email: user.email, role: user.role },
-        process.env.REFRESH_SECRET,
-        { expiresIn: "7d" } // Long-lived refresh token
-      );
-
+      const tokens = generateTokens(user);
       // Set refresh token as httpOnly cookie
-      res.cookie("refreshToken", refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      });
-
-      res.status(200).json({
-        success: true,
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          avatar: user.avatar,
-        },
-        token: accessToken, // Send access token to frontend
-      });
+      res
+        .cookie("refreshToken", tokens.refreshToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production", // true only in prod with HTTPS
+          sameSite: "strict",
+          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        })
+        .status(200)
+        .json({
+          success: true,
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+            avatar: user.avatar,
+          },
+          token: tokens.accessToken, // <-- frontend uses this for API calls
+        });
     } else {
       res.status(401).json({ error: "Invalid credentials" });
     }
@@ -247,18 +242,20 @@ app.post("/login", async (req, res) => {
 
 // Middleware to verify JWT token
 const verifyToken = (req, res, next) => {
-  const token = req.headers.authorization?.split(" ")[1]; // Bearer token
+  const authHeader = req.headers.authorization;
 
-  if (!token) {
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res.status(401).json({ error: "No token provided" });
   }
 
+  const token = authHeader.split(" ")[1];
+
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // Add user info to request, if its valed it decodes the users info
-    next(); //to noootttt sttoppp
+    req.user = decoded; // Add decoded payload (userId, email, role, etc.)
+    next();
   } catch (error) {
-    return res.status(401).json({ error: "Invalid token" });
+    return res.status(401).json({ error: "Invalid or expired token" });
   }
 };
 
@@ -269,10 +266,11 @@ app.post("/refresh-token", (req, res) => {
     return res.status(401).json({ message: "Unauthorized - No refresh token" });
   }
 
-  // Verify refreshToken
   jwt.verify(refreshToken, process.env.REFRESH_SECRET, (err, user) => {
     if (err) {
-      return res.status(403).json({ message: "Invalid refresh token" });
+      return res
+        .status(403)
+        .json({ message: "Invalid or expired refresh token" });
     }
 
     // Issue new access token
@@ -282,7 +280,7 @@ app.post("/refresh-token", (req, res) => {
       { expiresIn: "15m" }
     );
 
-    res.json({ accessToken: newAccessToken });
+    return res.json({ accessToken: newAccessToken });
   });
 });
 
@@ -759,15 +757,20 @@ app.delete(
 const getOptionalUserWithRefresh = async (req, res, next) => {
   try {
     const accessToken = req.headers.authorization?.split(" ")[1];
-    const refreshToken = req.cookies.refreshToken;
+    // const refreshToken = req.cookies.refreshToken;
+    console.log(accessToken, refreshToken);
 
     // Try access token first
     if (accessToken) {
       try {
         req.user = jwt.verify(accessToken, process.env.JWT_SECRET);
+        console.log(req.user);
+
         return next();
       } catch (error) {
-        console.log("Access token expired, attempting refresh...");
+        console.log(
+          "Access token expired,fielsdfkdnfklndlkfds attempting refresh..."
+        );
       }
     }
 
