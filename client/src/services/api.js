@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE_URL = "http://localhost:4000";
+const API_BASE_URL = "https://e-commerce-fastapi-app-production.up.railway.app/";
 
 // Create axios instance
 const api = axios.create({
